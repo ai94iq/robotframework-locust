@@ -9,7 +9,9 @@ THEMES = {
         QTabWidget::pane { border: 1px solid #2a2a2e; background: #1a1a1d; }
         QTabBar::tab { background: #141416; color: #a1a1aa; padding: 8px 16px; border: 1px solid #2a2a2e; }
         QTabBar::tab:selected { background: #2563eb; color: #fff; }
-        QPushButton { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 500; }
+        QFrame { border-radius: 8px; }
+        QWidget#panel { background: #1f1f23; border: 1px solid #2a2a2e; border-radius: 12px; padding: 16px; }
+        QPushButton { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 500; }
         QPushButton:hover { background: #1d4ed8; }
         QPushButton#danger { background: #dc2626; }
         QPushButton#ghost { background: transparent; border: 1px solid #2a2a2e; color: #e4e4e7; }

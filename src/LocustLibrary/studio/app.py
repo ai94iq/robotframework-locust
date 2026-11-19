@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("robotframework-locust studio")
-        self.resize(1280, 800)
+        self.resize(1440, 900)
         self._theme_name = "dark_console"
         self._tasks = []
         self._worker = None
