@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+*.egg
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Robot Framework
+output.xml
+log.html
+report.html
+*.csv
+
+# Locust
+*.csv
+
+# Impeccable
+.impeccable/mocks/
+
+# IDE
+.vscode/
+.idea/
+*.swp

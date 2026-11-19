@@ -1,0 +1,72 @@
+"""Scenario data shapes for LocustLibrary."""
+
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class Task:
+    """A single load-test task."""
+
+    name: str
+    kind: str = "http"  # "http" or "rf"
+    weight: int = 1
+    method: str = "GET"
+    path: str = "/"
+    headers: dict[str, str] = field(default_factory=dict)
+    body: Any = None
+    expected_status: int = 200
+    keyword_name: str = ""
+    keyword_args: tuple = field(default_factory=tuple)
+
+
+@dataclass
+class Scenario:
+    """A load-test scenario."""
+
+    host: str
+    wait_min: float = 1.0
+    wait_max: float = 3.0
+    on_start: str = ""
+    on_stop: str = ""
+    tasks: list[Task] = field(default_factory=list)
+
+
+@dataclass
+class RunConfig:
+    """Run configuration."""
+
+    users: int = 10
+    spawn_rate: float = 1.0
+    run_time: str = "30s"
+    csv_prefix: str = "locust"
+
+
+@dataclass
+class StatsRow:
+    """Per-endpoint stats."""
+
+    name: str
+    request_count: int = 0
+    failure_count: int = 0
+    median: float = 0.0
+    average: float = 0.0
+    min: float = 0.0
+    max: float = 0.0
+    rps: float = 0.0
+    failures_s: float = 0.0
+    p50: float = 0.0
+    p90: float = 0.0
+    p95: float = 0.0
+    p99: float = 0.0
+    p999: float = 0.0
+
+
+@dataclass
+class Stats:
+    """Aggregated stats."""
+
+    rows: list[StatsRow] = field(default_factory=list)
+    aggregated: StatsRow | None = None
+    errors: list[dict] = field(default_factory=list)
+    fail_ratio: float = 0.0

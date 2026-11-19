@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=84"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robotframework-locust"
+dynamic = ["version"]
+description = "Robot Framework library for authoring and running Locust load tests in RF syntax"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Abdulwahab Isam", email = "abdoi94.iq@gmail.com" }]
+dependencies = [
+    "robotframework>=7.5",
+    "robotframework-pythonlibcore>=4.6.0",
+    "locust>=2.30,<3",
+    "greenlet>=3.0",
+]
+classifiers = [
+    "Framework :: Robot Framework",
+    "Framework :: Robot Framework :: Library",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Benchmark",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+studio = ["PySide6>=6.8", "pyqtgraph>=0.13"]
+
+[project.urls]
+Homepage = "https://github.com/ai94iq/robotframework-locust"
+Source = "https://github.com/ai94iq/robotframework-locust"
+Issues = "https://github.com/ai94iq/robotframework-locust/issues"
+Changelog = "https://github.com/ai94iq/robotframework-locust/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = {attr = "LocustLibrary.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+LocustLibrary = ["py.typed"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "bandit>=1.8",
+    "pip-audit>=2.7",
+    "detect-secrets>=1.5",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = ["I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --cov=LocustLibrary --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/LocustLibrary"]
+
+[tool.coverage.report]
+fail_under = 80
