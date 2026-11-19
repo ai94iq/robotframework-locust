@@ -100,7 +100,6 @@ class MainWindow(QMainWindow):
         lay.addLayout(form)
 
         self.task_list = QListWidget()
-        self.task_list.setPlaceholderText("No tasks yet. Add one below.")
         lay.addWidget(QLabel("Tasks"))
         lay.addWidget(self.task_list)
 
