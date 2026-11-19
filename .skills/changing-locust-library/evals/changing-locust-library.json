@@ -8,7 +8,14 @@
       "Keeps --web-host 127.0.0.1 on the master and off the worker",
       "Does not open a listen socket to prove the bind"
     ],
-    "runs": []
+    "runs": [
+      {
+        "date": "2026-11-19",
+        "model": "grok-4.7",
+        "passed": [true, true, true],
+        "note": "The hook rejects a public constant, a second 0.0.0.0 after the loopback flag, and a worker without --master-host. No socket was opened."
+      }
+    ]
   },
   {
     "skills": ["changing-locust-library"],
@@ -19,7 +26,14 @@
       "Does not add --web-login",
       "Says the login flag needs a custom auth page in the locustfile"
     ],
-    "runs": []
+    "runs": [
+      {
+        "date": "2026-11-19",
+        "model": "grok-4.7",
+        "passed": [true, true, true],
+        "note": "web_problems rejects 0.0.0.0 and --web-login in code, and ignores the same words in a docstring. The skill states the auth-page reason."
+      }
+    ]
   },
   {
     "skills": ["changing-locust-library"],
@@ -30,6 +44,13 @@
       "Leaves the _patch_gevent call in run_load_test",
       "Does not import Locust at module level in a new file that runs before that patch"
     ],
-    "runs": []
+    "runs": [
+      {
+        "date": "2026-11-19",
+        "model": "grok-4.7",
+        "passed": [true, true, true],
+        "note": "time_problems requires endswith ms before s. patch_problems requires _patch_gevent inside run_load_test. Both pass on the current tree."
+      }
+    ]
   }
 ]

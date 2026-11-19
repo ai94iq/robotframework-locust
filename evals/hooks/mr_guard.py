@@ -19,6 +19,7 @@ def check(root: Path) -> list[str]:
     problems.extend(patch_problems(runner))
     problems.extend(time_problems(runner, "_parse_time"))
     problems.extend(time_problems(library, "_parse_seconds"))
+    problems.extend(keyword_problems(library, runner))
     for path in (root / "src").rglob("*.py"):
         problems.extend(slop_problems(path.read_text(encoding="utf-8"), path.name))
     for path in (root / "tests").rglob("*.py"):
@@ -55,18 +56,23 @@ def spawn_problems(source: str) -> list[str]:
         strings = _strings(node)
         if "--master" in strings and "--worker" not in strings:
             saw_master = True
-            problems.extend(_needs_loopback(node, strings, "--master-bind-host"))
-            problems.extend(_needs_loopback(node, strings, "--web-host"))
-        if "--worker" in strings and "--web-host" in strings:
-            problems.append("worker argv must not pass --web-host")
+            problems.extend(_flag_problems(node, "--master-bind-host"))
+            problems.extend(_flag_problems(node, "--web-host"))
+            if any(item in {"0.0.0.0", "*"} for item in strings):
+                problems.append("master argv has a public bind")
+        if "--worker" in strings:
+            if "--web-host" in strings:
+                problems.append("worker argv must not pass --web-host")
+            problems.extend(_flag_problems(node, "--master-host", "worker argv must pass --master-host 127.0.0.1"))
     if not saw_master:
         problems.append("master spawn argv was not found")
     return problems
 
 
 def web_problems(source: str) -> list[str]:
-    problems = [f"web UI allow list is missing {host}" for host in _LOOPBACK_HOSTS if host not in source]
-    if "0.0.0.0" in source or "--web-login" in source:
+    strings = _code_strings(ast.parse(source))
+    problems = [f"web UI allow list is missing {host}" for host in _LOOPBACK_HOSTS if host not in strings]
+    if "0.0.0.0" in strings or "--web-login" in strings:
         problems.append("web UI must not bind a public host or pass --web-login")
     return problems
 
@@ -105,12 +111,23 @@ def slop_problems(source: str, name: str) -> list[str]:
 
 def test_spawn_problems(source: str, name: str) -> list[str]:
     for node in ast.walk(ast.parse(source)):
-        if not isinstance(node, ast.Call):
-            continue
-        strings = _strings(node)
-        if "-m" in strings and "locust" in strings:
+        if isinstance(node, ast.Call) and _spawns_locust(node):
             return [f"{name}: test starts locust"]
     return []
+
+
+def keyword_problems(library: str, runner: str) -> list[str]:
+    lib = ast.parse(library)
+    run = ast.parse(runner)
+    problems: list[str] = []
+    for name in ("add_task", "set_on_start", "set_on_stop"):
+        if not _calls(lib, name, "_keyword_name"):
+            problems.append(f"{name} must reject a blank keyword")
+    if not _raises(lib, "_keyword_name"):
+        problems.append("_keyword_name must raise when the name is empty")
+    if not _calls(run, "_call_keyword", "run_keyword"):
+        problems.append("RF tasks must call BuiltIn.run_keyword")
+    return problems
 
 
 def _loopback_value(tree: ast.AST) -> str | None:
@@ -129,11 +146,25 @@ def _loopback_value(tree: ast.AST) -> str | None:
     return None
 
 
-def _needs_loopback(node: ast.List, strings: list[str], flag: str) -> list[str]:
-    names = [elt.id for elt in node.elts if isinstance(elt, ast.Name)]
-    if flag in strings and "_LOOPBACK" in names:
+def _flag_problems(node: ast.List, flag: str, message: str | None = None) -> list[str]:
+    values = _flag_values(node.elts, flag)
+    if values and all(_is_loopback(item) for item in values):
         return []
-    return [f"master argv must pass {flag} 127.0.0.1"]
+    return [message or f"master argv must pass {flag} 127.0.0.1"]
+
+
+def _flag_values(elts: list[ast.expr], flag: str) -> list[ast.expr]:
+    values: list[ast.expr] = []
+    for index, elt in enumerate(elts):
+        if isinstance(elt, ast.Constant) and elt.value == flag and index + 1 < len(elts):
+            values.append(elts[index + 1])
+    return values
+
+
+def _is_loopback(node: ast.expr) -> bool:
+    if isinstance(node, ast.Name) and node.id == "_LOOPBACK":
+        return True
+    return isinstance(node, ast.Constant) and node.value == "127.0.0.1"
 
 
 def _strings(node: ast.AST) -> list[str]:
@@ -145,7 +176,69 @@ def _strings(node: ast.AST) -> list[str]:
 
 
 def _swallows(node: ast.ExceptHandler) -> bool:
-    return len(node.body) == 1 and isinstance(node.body[0], ast.Pass)
+    if not _broad(node.type) or any(isinstance(child, ast.Raise) for child in ast.walk(node)):
+        return False
+    return all(isinstance(stmt, (ast.Pass, ast.Return, ast.Continue)) for stmt in node.body)
+
+
+def _broad(expr: ast.expr | None) -> bool:
+    if expr is None:
+        return True
+    if isinstance(expr, ast.Name):
+        return expr.id in {"Exception", "BaseException"}
+    if isinstance(expr, ast.Tuple):
+        return any(_broad(item) for item in expr.elts)
+    return False
+
+
+def _spawns_locust(node: ast.Call) -> bool:
+    name = node.func.id if isinstance(node.func, ast.Name) else ""
+    if isinstance(node.func, ast.Attribute):
+        name = node.func.attr
+    if name not in {"system", "popen", "run", "call", "check_call", "check_output", "Popen"}:
+        return False
+    return "locust" in " ".join(_strings(node)).lower()
+
+
+def _calls(tree: ast.AST, fn_name: str, callee: str) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == fn_name:
+            return any(_callee(call) == callee for call in ast.walk(node) if isinstance(call, ast.Call))
+    return False
+
+
+def _callee(node: ast.Call) -> str:
+    if isinstance(node.func, ast.Name):
+        return node.func.id
+    if isinstance(node.func, ast.Attribute):
+        return node.func.attr
+    return ""
+
+
+def _raises(tree: ast.AST, fn_name: str) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name == fn_name:
+            return any(isinstance(child, ast.Raise) for child in ast.walk(node))
+    return False
+
+
+def _code_strings(tree: ast.AST) -> set[str]:
+    skipped = _docstrings(tree)
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in skipped:
+            found.add(node.value)
+    return found
+
+
+def _docstrings(tree: ast.AST) -> set[int]:
+    skipped: set[int] = set()
+    nodes = [tree, *(n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)))]
+    for node in nodes:
+        body = getattr(node, "body", [])
+        if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
+            skipped.add(id(body[0].value))
+    return skipped
 
 
 def _shell_true(node: ast.Call) -> bool:

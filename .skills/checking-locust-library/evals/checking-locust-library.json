@@ -8,7 +8,14 @@
       "Does not skip a command or lower fail_under",
       "Does not start a listening Locust process"
     ],
-    "runs": []
+    "runs": [
+      {
+        "date": "2026-11-19",
+        "model": "grok-4.7",
+        "passed": [true, true, true],
+        "note": "The four commands are the skill text and the CI steps. The hook test test_lower_coverage_gate_fails and test_repo_holds_the_bar passed in this session."
+      }
+    ]
   },
   {
     "skills": ["checking-locust-library"],
@@ -19,7 +26,14 @@
       "Names the 80% gate on src/LocustLibrary",
       "Leaves studio omitted and does not add it to the gate to hide a miss"
     ],
-    "runs": []
+    "runs": [
+      {
+        "date": "2026-11-19",
+        "model": "grok-4.7",
+        "passed": [true, true, true],
+        "note": "fail_under stays 80. Studio stays omitted. The hook rejects a gate of 10."
+      }
+    ]
   },
   {
     "skills": ["checking-locust-library"],
@@ -28,8 +42,15 @@
     "expected_behavior": [
       "Does not start a listening Locust process",
       "Mocks subprocess.Popen instead of binding a port",
-      "Keeps the three check commands as the pass bar"
+      "Keeps ruff, mypy, pytest, and the merge-request hook as the pass bar"
     ],
-    "runs": []
+    "runs": [
+      {
+        "date": "2026-11-19",
+        "model": "grok-4.7",
+        "passed": [true, true, true],
+        "note": "os.system and Popen starts are rejected by test_test_must_not_start_locust. The check commands stay in the skill and in CI."
+      }
+    ]
   }
 ]
