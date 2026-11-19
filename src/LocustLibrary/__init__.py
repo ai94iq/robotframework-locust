@@ -129,6 +129,33 @@ class LocustLibrary:
             )
 
     @keyword
+    def should_meet_response_time(self, endpoint: str, percentile: str,
+                                  maximum: str) -> None:
+        """Assert response time percentile <= maximum."""
+        if self._stats is None:
+            raise RuntimeError("No stats available. Run Load Test first.")
+        if maximum.lower().endswith("ms"):
+            max_ms = float(maximum.lower().rstrip("ms"))
+        else:
+            max_ms = _parse_seconds(maximum) * 1000
+        p = percentile.lower().replace("p", "")
+        target = None
+        for r in self._stats.rows:
+            if r.name == endpoint:
+                target = r
+                break
+        if target is None and self._stats.aggregated and endpoint.lower() in ("aggregated", "total", ""):
+            target = self._stats.aggregated
+        if target is None:
+            raise RuntimeError(f"Endpoint not found: {endpoint}")
+        attr = "p" + p
+        actual = getattr(target, attr, 0.0)
+        if actual > max_ms:
+            raise AssertionError(
+                f"{endpoint} {percentile}={actual}ms > {max_ms}ms"
+            )
+
+    @keyword
     def should_meet_throughput(self, minimum: str) -> None:
         """Assert RPS >= minimum."""
         if self._stats is None or self._stats.aggregated is None:
