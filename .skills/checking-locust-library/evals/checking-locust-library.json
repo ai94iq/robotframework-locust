@@ -4,7 +4,7 @@
     "query": "Check the library.",
     "files": ["pyproject.toml"],
     "expected_behavior": [
-      "Runs uv run ruff check src tests, uv run mypy src, and uv run pytest from the repo root",
+      "Runs ruff, mypy, pytest, and python evals/hooks/mr_guard.py from the repo root",
       "Does not skip a command or lower fail_under",
       "Does not start a listening Locust process"
     ],

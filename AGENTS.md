@@ -7,3 +7,5 @@ Read these before changing code:
 
 - `.skills/checking-locust-library/SKILL.md`
 - `.skills/changing-locust-library/SKILL.md`
+
+`evals/hooks/mr_guard.py` is the check an external merge request must pass.

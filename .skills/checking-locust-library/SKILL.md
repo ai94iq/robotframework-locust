@@ -8,10 +8,15 @@ description: Runs ruff, mypy, and pytest for robotframework-locust and holds the
 From the repo root, run exactly:
 
 ```
-uv run ruff check src tests
-uv run mypy src
+uv run ruff check src tests evals
+uv run mypy src evals/hooks/mr_guard.py
 uv run pytest
+uv run python evals/hooks/mr_guard.py
 ```
+
+`evals/hooks/mr_guard.py` fails the change when it drops the coverage gate,
+the loopback flags, the gevent patch, or swallows an exception. CI runs it
+on every pull request.
 
 `pytest` fails under 80% coverage of `src/LocustLibrary`.
 `src/LocustLibrary/studio/` is omitted from that gate. Do not lower
