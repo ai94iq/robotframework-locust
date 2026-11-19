@@ -172,6 +172,10 @@ class MainWindow(QMainWindow):
         return w
 
     def _run(self):
+        if not self._tasks:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "No tasks", "Add at least one task before running.")
+            return
         kwargs = {
             "host": self.host_edit.text(),
             "wait_min": self.wait_min_edit.text(),
