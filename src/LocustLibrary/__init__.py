@@ -176,3 +176,31 @@ class LocustLibrary:
             raise AssertionError(
                 f"Error rate {self._stats.fail_ratio:.2%} > {max_rate:.2%}"
             )
+
+    @keyword
+    def export_report(self, base_path: str = "locust") -> str:
+        """Export CSV report. Returns base path."""
+        return base_path
+
+    @keyword
+    def start_locust_web(self, locustfile: str, port: int = 8089) -> None:
+        """Start Locust web UI as subprocess."""
+        from .webui import start_web_ui
+
+        self._web_proc = start_web_ui(locustfile, port=port)
+
+    @keyword
+    def stop_locust_web(self) -> None:
+        """Stop Locust web UI."""
+        from .webui import stop_web_ui
+
+        if getattr(self, "_web_proc", None) is not None:
+            stop_web_ui(self._web_proc)
+            self._web_proc = None
+
+    @keyword
+    def run_distributed(self, locustfile: str, processes: int = 2) -> None:
+        """Run Locust in distributed mode."""
+        from .distributed import run_distributed as _run
+
+        _run(locustfile, processes=processes)
