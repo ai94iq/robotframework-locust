@@ -212,7 +212,7 @@ class MainWindow(QMainWindow):
             self.chart = QLabel("Install pyqtgraph for live charts")
         lay.addWidget(self.chart)
 
-        self.status_label = QLabel("Idle")
+        self.status_label = QLabel("Ready to run")
         lay.addWidget(self.status_label)
         return w
 
@@ -232,7 +232,7 @@ class MainWindow(QMainWindow):
             "csv_prefix": self.csv_edit.text(),
         }
         self.run_btn.setEnabled(False)
-        self.status_label.setText("Running...")
+        self.status_label.setText("Running load test...")
         self._worker = RunWorker(kwargs)
         self._worker.finished.connect(self._on_finished)
         self._worker.error.connect(self._on_error)
@@ -240,7 +240,7 @@ class MainWindow(QMainWindow):
 
     def _on_finished(self, stats):
         self.run_btn.setEnabled(True)
-        self.status_label.setText("Finished")
+        self.status_label.setText("Run complete")
         agg = stats.get("aggregated") or {}
         self.stats_table.setRowCount(0)
         for r in stats.get("rows", []):
@@ -271,7 +271,7 @@ class MainWindow(QMainWindow):
 
     def _on_error(self, msg):
         self.run_btn.setEnabled(True)
-        self.status_label.setText("Error")
+        self.status_label.setText("Run failed")
         QMessageBox.critical(self, "Error", msg)
 
     def _make_report_tab(self):
