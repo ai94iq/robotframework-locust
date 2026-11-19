@@ -31,7 +31,9 @@ classifiers = [
 [project.optional-dependencies]
 studio = ["PySide6>=6.8", "pyqtgraph>=0.13"]
 
-[project.urls]
+[project.scripts]
+locust-studio = "LocustLibrary.studio.app:main"
+
 Homepage = "https://github.com/ai94iq/robotframework-locust"
 Source = "https://github.com/ai94iq/robotframework-locust"
 Issues = "https://github.com/ai94iq/robotframework-locust/issues"
