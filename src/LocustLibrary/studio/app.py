@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("robotframework-locust studio")
         self.resize(1440, 900)
+        self.setMinimumSize(900, 600)
         self._theme_name = "dark_console"
         self._tasks = []
         self._worker = None
@@ -133,6 +134,8 @@ class MainWindow(QMainWindow):
 
         self.task_list = QListWidget()
         lay.addWidget(QLabel("Tasks"))
+        self.empty_tasks_label = QLabel("No tasks yet. Add one below.")
+        lay.addWidget(self.empty_tasks_label)
         lay.addWidget(self.task_list)
 
         row = QHBoxLayout()
@@ -148,6 +151,7 @@ class MainWindow(QMainWindow):
         row.addWidget(QLabel("w"))
         row.addWidget(self.task_weight)
         add_btn = QPushButton("Add task")
+        add_btn.setAccessibleName("Add task")
         add_btn.clicked.connect(self._add_task)
         row.addWidget(add_btn)
         lay.addLayout(row)
@@ -163,6 +167,8 @@ class MainWindow(QMainWindow):
         }
         self._tasks.append(t)
         self.task_list.addItem(f"{t['method']} {t['path']} (w{t['weight']}) - {t['name']}")
+        if hasattr(self, "empty_tasks_label"):
+            self.empty_tasks_label.hide()
 
     def _make_run_tab(self):
         w = QWidget()
@@ -181,6 +187,8 @@ class MainWindow(QMainWindow):
         lay.addLayout(cfg)
 
         self.run_btn = QPushButton("Run")
+        self.run_btn.setAccessibleName("Run load test")
+        self.run_btn.setToolTip("Start the load test (Ctrl+R)")
         self.run_btn.clicked.connect(self._run)
         lay.addWidget(self.run_btn)
 
