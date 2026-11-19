@@ -3,9 +3,12 @@
 import subprocess
 import sys
 
+from .validation import validate_locustfile
 
-def run_distributed(locustfile: str, processes: int = 2, master_port: int = 5557) -> None:
+
+def run_distributed(locustfile: str, processes: int = 2, master_port: int = 5557):
     """Run Locust in distributed mode (master + workers)."""
+    locustfile = validate_locustfile(locustfile)
     master = subprocess.Popen([
         sys.executable, "-m", "locust", "-f", locustfile, "--master",
         "--master-bind-port", str(master_port),

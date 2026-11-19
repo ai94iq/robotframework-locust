@@ -35,6 +35,9 @@ class LocustLibrary:
     @keyword
     def create_load_test(self, host: str) -> None:
         """Create a new load test scenario."""
+        from .validation import validate_host
+
+        host = validate_host(host)
         self._scenario = Scenario(host=host)
         self._config = RunConfig()
 
@@ -98,7 +101,9 @@ class LocustLibrary:
         self._config.users = users
         self._config.spawn_rate = spawn_rate
         self._config.run_time = run_time
-        self._config.csv_prefix = csv_prefix
+        from .validation import sanitize_prefix
+
+        self._config.csv_prefix = sanitize_prefix(csv_prefix)
         self._stats = run_load_test(self._scenario, self._config)
         logger.info(f"Load test finished: {self._stats}")
 

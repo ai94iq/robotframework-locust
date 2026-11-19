@@ -7,8 +7,11 @@ from locust.stats import StatsCSVFileWriter
 from locust import __version__ as locust_version
 
 
-def write_csv_report(env, base_filepath: str, full_history: bool = True) -> str:
+def write_csv_report(env, base_filepath: str, full_history: bool = True, output_dir: str | None = None) -> str:
     """Write Locust CSV reports. Returns base path."""
+    from .validation import validate_output_path
+
+    base_filepath = validate_output_path(base_filepath, output_dir)
     writer = StatsCSVFileWriter(
         environment=env,
         percentiles_to_report=[0.5, 0.9, 0.95, 0.99, 0.999],
