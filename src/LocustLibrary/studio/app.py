@@ -11,7 +11,7 @@ try:
         QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
         QPushButton, QLineEdit, QLabel, QSpinBox, QDoubleSpinBox, QListWidget,
         QListWidgetItem, QTableWidget, QTableWidgetItem, QComboBox, QFileDialog,
-        QStatusBar, QMessageBox, QFormLayout, QGroupBox,
+        QStatusBar, QMessageBox, QFormLayout, QGroupBox, QProgressBar, QFrame, QTextEdit, QSplitter,
     )
 except ImportError as e:  # pragma: no cover
     raise SystemExit(f"PySide6 required for studio: {e}")
@@ -85,6 +85,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(splitter)
 
         self.setStatusBar(QStatusBar())
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMaximumWidth(200)
+        self.progress_bar.setVisible(False)
+        self.statusBar().addPermanentWidget(self.progress_bar)
         from PySide6.QtGui import QShortcut, QKeySequence
 
         sc_run = QShortcut(QKeySequence("Ctrl+R"), self)
@@ -130,6 +134,7 @@ class MainWindow(QMainWindow):
         lay = QVBoxLayout(w)
         form = QFormLayout()
         self.host_edit = QLineEdit("http://127.0.0.1:8765")
+        self.host_edit.setAccessibleName("Host URL")
         self.wait_min_edit = QLineEdit("0.1s")
         self.wait_max_edit = QLineEdit("0.5s")
         form.addRow("Host", self.host_edit)
@@ -145,7 +150,9 @@ class MainWindow(QMainWindow):
 
         row = QHBoxLayout()
         self.task_name = QLineEdit("Get Home")
+        self.task_name.setAccessibleName("Task name")
         self.task_path = QLineEdit("/")
+        self.task_path.setAccessibleName("Task path")
         self.task_method = QComboBox()
         self.task_method.addItems(["GET", "POST"])
         self.task_weight = QSpinBox()
@@ -233,6 +240,8 @@ class MainWindow(QMainWindow):
         }
         self.run_btn.setEnabled(False)
         self.status_label.setText("Running load test...")
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setRange(0, 0)  # indeterminate
         self._worker = RunWorker(kwargs)
         self._worker.finished.connect(self._on_finished)
         self._worker.error.connect(self._on_error)
@@ -241,6 +250,7 @@ class MainWindow(QMainWindow):
     def _on_finished(self, stats):
         self.run_btn.setEnabled(True)
         self.status_label.setText("Run complete")
+        self.progress_bar.setVisible(False)
         agg = stats.get("aggregated") or {}
         self.stats_table.setRowCount(0)
         for r in stats.get("rows", []):
@@ -272,6 +282,7 @@ class MainWindow(QMainWindow):
     def _on_error(self, msg):
         self.run_btn.setEnabled(True)
         self.status_label.setText("Run failed")
+        self.progress_bar.setVisible(False)
         QMessageBox.critical(self, "Error", msg)
 
     def _make_report_tab(self):

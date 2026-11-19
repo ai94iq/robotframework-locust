@@ -69,6 +69,24 @@ THEMES = {
         QStatusBar { background: #0a0a14; color: #888; }
         """,
     },
+    "high_contrast": {
+        "name": "High Contrast",
+        "qss": """
+        QWidget { background: #000000; color: #ffffff; font-family: 'Segoe UI', sans-serif; font-size: 14px; }
+        QMainWindow { background: #000000; }
+        QPushButton { background: #ffff00; color: #000000; border: 2px solid #ffffff; padding: 8px 16px; border-radius: 4px; font-weight: 700; }
+        QPushButton:focus { outline: 3px solid #00ffff; outline-offset: 2px; }
+        QLineEdit, QSpinBox, QDoubleSpinBox { background: #000000; border: 2px solid #ffffff; color: #ffffff; padding: 8px 10px; border-radius: 4px; }
+        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 3px solid #ffff00; }
+        QTableWidget { background: #000000; gridline-color: #ffffff; }
+        QHeaderView::section { background: #000000; color: #ffff00; padding: 6px; border: 2px solid #ffffff; font-size: 11px; text-transform: uppercase; }
+        QListWidget { background: #000000; border: 2px solid #ffffff; }
+        QListWidget::item:selected { background: #ffff00; color: #000000; }
+        QTabBar::tab { background: #000000; color: #ffffff; border: 2px solid #ffffff; padding: 8px 16px; }
+        QTabBar::tab:selected { background: #ffff00; color: #000000; }
+        QStatusBar { background: #000000; color: #ffffff; border-top: 2px solid #ffffff; }
+        """,
+    },
 }
 
 
