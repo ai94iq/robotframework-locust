@@ -71,16 +71,12 @@ _PATCHED = {"done": False}
 def _patch_gevent() -> None:
     if _PATCHED["done"]:
         return
-    if os.environ.get("LOCUST_SKIP_MONKEY_PATCH") != "1":
-        os.environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
-    try:
-        import gevent.monkey
+    os.environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
+    import gevent.monkey
 
-        if not getattr(gevent.monkey, "_rf_patched", False):
-            gevent.monkey.patch_all()
-            gevent.monkey._rf_patched = True
-    except Exception:
-        pass
+    if not getattr(gevent.monkey, "_rf_patched", False):
+        gevent.monkey.patch_all()
+        gevent.monkey._rf_patched = True
     _PATCHED["done"] = True
 
 
@@ -146,12 +142,12 @@ def run_load_test(scenario: Scenario, config: RunConfig) -> Stats:
 
 def _parse_time(value: str) -> float:
     value = value.strip().lower()
+    if value.endswith("ms"):
+        return float(value[:-2]) / 1000.0
     if value.endswith("s"):
         return float(value[:-1])
     if value.endswith("m"):
         return float(value[:-1]) * 60
     if value.endswith("h"):
         return float(value[:-1]) * 3600
-    if value.endswith("ms"):
-        return float(value[:-2]) / 1000.0
     return float(value)

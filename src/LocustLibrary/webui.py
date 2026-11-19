@@ -3,16 +3,22 @@
 import subprocess
 import sys
 
+_LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
+
 
 def start_web_ui(
     locustfile: str, port: int = 8089, host: str = "127.0.0.1"
 ) -> subprocess.Popen[bytes]:
-    """Start Locust web UI as a subprocess. Returns the process handle."""
+    """Start Locust web UI on loopback. Returns the process handle."""
     from .validation import validate_locustfile
 
+    if host not in _LOOPBACK:
+        raise ValueError("web host must be loopback")
     locustfile = validate_locustfile(locustfile)
-    cmd = [sys.executable, "-m", "locust", "-f", locustfile, "--web-host", host,
-           "--web-port", str(port)]
+    cmd = [
+        sys.executable, "-m", "locust", "-f", locustfile,
+        "--web-host", host, "--web-port", str(port),
+    ]
     return subprocess.Popen(cmd)
 
 

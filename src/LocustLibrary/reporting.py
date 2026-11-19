@@ -1,38 +1,51 @@
-"""Reporting: RF log + CSV/HTML export."""
+"""Reporting: CSV and HTML export."""
 
 import csv
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-from locust.stats import StatsCSVFileWriter
+from locust.html import get_html_report
+from locust.stats import StatsCSV
 
 from .scenario import Stats
 
 
-def write_csv_report(env, base_filepath: str, full_history: bool = True, output_dir: str | None = None) -> str:
-    """Write Locust CSV reports. Returns base path."""
+def _write_table(path: Path, write_rows: Callable[[Any], None]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        write_rows(csv.writer(handle))
+
+
+def write_csv_report(
+    env: Any,
+    base_filepath: str,
+    full_history: bool = True,
+    output_dir: str | None = None,
+) -> str:
+    """Write one snapshot of Locust CSV stats. Returns the base path."""
     from .validation import validate_output_path
 
-    base_filepath = validate_output_path(base_filepath, output_dir)
-    writer = StatsCSVFileWriter(
-        environment=env,
-        percentiles_to_report=[0.5, 0.9, 0.95, 0.99, 0.999],
-        base_filepath=base_filepath,
-        full_history=full_history,
-    )
-    # flush once
-    try:
-        writer.stats_to_csv()
-        writer.stats_to_csv(full_history=True)
-    except Exception:
-        pass
-    try:
-        writer.close()
-    except Exception:
-        pass
-    return base_filepath
+    base = validate_output_path(base_filepath, output_dir)
+    table = StatsCSV(env, [0.5, 0.9, 0.95, 0.99, 0.999])
+    _write_table(Path(base + "_stats.csv"), table.requests_csv)
+    _write_table(Path(base + "_failures.csv"), table.failures_csv)
+    _write_table(Path(base + "_exceptions.csv"), table.exceptions_csv)
+    # The streaming history writer never returns, so a one-shot export
+    # records only the header.
+    if full_history:
+        Path(base + "_stats_history.csv").write_text("Timestamp\n", encoding="utf-8")
+    return base
 
 
-def write_stats_csv(stats: Stats, base_filepath: str, output_dir: str | None = None) -> str:
+def write_html_report(env: Any) -> str:
+    """Generate the Locust HTML report."""
+    report = get_html_report(env)  # type: ignore[no-untyped-call]
+    return str(report)
+
+
+def write_stats_csv(
+    stats: Stats, base_filepath: str, output_dir: str | None = None
+) -> str:
     """Write saved stats to CSV. Returns the validated base path."""
     from .validation import validate_output_path
 
@@ -51,13 +64,3 @@ def write_stats_csv(stats: Stats, base_filepath: str, output_dir: str | None = N
         for row in rows:
             writer.writerow({name: getattr(row, name) for name in fields})
     return base
-
-
-def write_html_report(env) -> str:
-    """Generate HTML report string."""
-    try:
-        from locust import stats as ls
-
-        return ls.get_html_report(env=env)
-    except Exception:
-        return ""

@@ -1,33 +1,47 @@
 """Main studio application window."""
 
-import json
-import os
 import sys
-from pathlib import Path
+from typing import Any
 
 try:
     from PySide6.QtCore import Qt, QThread, Signal
     from PySide6.QtWidgets import (
-        QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-        QPushButton, QLineEdit, QLabel, QSpinBox, QDoubleSpinBox, QListWidget,
-        QListWidgetItem, QTableWidget, QTableWidgetItem, QComboBox, QFileDialog,
-        QStatusBar, QMessageBox, QFormLayout, QGroupBox, QProgressBar, QFrame, QTextEdit, QSplitter, QCheckBox,
+        QApplication,
+        QCheckBox,
+        QComboBox,
+        QDoubleSpinBox,
+        QFormLayout,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QListWidget,
+        QMainWindow,
+        QMessageBox,
+        QProgressBar,
+        QPushButton,
+        QSpinBox,
+        QStatusBar,
+        QTableWidget,
+        QTableWidgetItem,
+        QTabWidget,
+        QVBoxLayout,
+        QWidget,
     )
-except ImportError as e:  # pragma: no cover
-    raise SystemExit(f"PySide6 required for studio: {e}")
+except ImportError as exc:  # pragma: no cover
+    raise SystemExit("PySide6 required for studio") from exc
 
 from .themes import THEMES, get_theme
 
 
-class RunWorker(QThread):
+class RunWorker(QThread):  # type: ignore[misc]
     finished = Signal(object)
     error = Signal(str)
 
-    def __init__(self, scenario_kwargs):
+    def __init__(self, scenario_kwargs: dict[str, Any]) -> None:
         super().__init__()
         self.kwargs = scenario_kwargs
 
-    def run(self):
+    def run(self) -> None:
         try:
             from LocustLibrary import LocustLibrary
 
@@ -49,19 +63,19 @@ class RunWorker(QThread):
                 csv_prefix=self.kwargs["csv_prefix"],
             )
             self.finished.emit(lib.get_locust_stats())
-        except Exception as e:  # pragma: no cover
-            self.error.emit(str(e))
+        except Exception as exc:  # noqa: BLE001
+            self.error.emit(str(exc))
 
 
-class MainWindow(QMainWindow):
-    def __init__(self):
+class MainWindow(QMainWindow):  # type: ignore[misc]
+    def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("robotframework-locust studio")
         self.resize(1440, 900)
         self.setMinimumSize(900, 600)
         self._theme_name = "dark_console"
-        self._tasks = []
-        self._worker = None
+        self._tasks: list[dict[str, Any]] = []
+        self._worker: RunWorker | None = None
 
         self.tabs = QTabWidget()
         self._build_tab = self._make_build_tab()
@@ -89,31 +103,31 @@ class MainWindow(QMainWindow):
         self.progress_bar.setMaximumWidth(200)
         self.progress_bar.setVisible(False)
         self.statusBar().addPermanentWidget(self.progress_bar)
-        from PySide6.QtGui import QShortcut, QKeySequence
+        from PySide6.QtGui import QKeySequence, QShortcut
 
         sc_run = QShortcut(QKeySequence("Ctrl+R"), self)
         sc_run.activated.connect(self._run)
         sc_settings = QShortcut(QKeySequence("Ctrl+,"), self)
         sc_settings.activated.connect(lambda: self.tabs.setCurrentIndex(3))
 
-    def apply_theme(self, name):
+    def apply_theme(self, name: str) -> None:
         self._theme_name = name
         self.setStyleSheet(get_theme(name)["qss"])
 
-    def _toggle_rtl(self, checked):
+    def _toggle_rtl(self, checked: bool) -> None:
         from PySide6.QtCore import Qt
         from PySide6.QtWidgets import QApplication
         QApplication.instance().setLayoutDirection(
             Qt.RightToLeft if checked else Qt.LeftToRight
         )
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: object) -> None:
         super().resizeEvent(event)
         if hasattr(self, "sidebar"):
             self.sidebar.setVisible(self.width() >= 1000)
 
-    def _make_sidebar(self):
-        from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget
+    def _make_sidebar(self) -> Any:
+        from PySide6.QtWidgets import QLabel, QListWidget, QVBoxLayout, QWidget
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.addWidget(QLabel("Scenarios"))
@@ -126,8 +140,8 @@ class MainWindow(QMainWindow):
         lay.addWidget(tw)
         return w
 
-    def _make_right_panel(self):
-        from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit
+    def _make_right_panel(self) -> Any:
+        from PySide6.QtWidgets import QLabel, QTextEdit, QVBoxLayout, QWidget
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.addWidget(QLabel("Live log"))
@@ -137,7 +151,7 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.log_text)
         return w
 
-    def _make_build_tab(self):
+    def _make_build_tab(self) -> Any:
         w = QWidget()
         lay = QVBoxLayout(w)
         form = QFormLayout()
@@ -178,7 +192,7 @@ class MainWindow(QMainWindow):
         lay.addLayout(row)
         return w
 
-    def _add_task(self):
+    def _add_task(self) -> None:
         t = {
             "name": self.task_name.text(),
             "method": self.task_method.currentText(),
@@ -191,7 +205,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "empty_tasks_label"):
             self.empty_tasks_label.hide()
 
-    def _make_run_tab(self):
+    def _make_run_tab(self) -> Any:
         w = QWidget()
         lay = QVBoxLayout(w)
         cfg = QFormLayout()
@@ -225,7 +239,7 @@ class MainWindow(QMainWindow):
             self.chart.setTitle("RPS over time")
             self.chart.showGrid(x=True, y=True, alpha=0.2)
             self.chart.setMinimumHeight(180)
-        except Exception:
+        except ImportError:
             self.chart = QLabel("Install pyqtgraph for live charts")
         lay.addWidget(self.chart)
 
@@ -233,7 +247,7 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.status_label)
         return w
 
-    def _run(self):
+    def _run(self) -> None:
         if not self._tasks:
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.warning(self, "No tasks", "Add at least one task before running.")
@@ -257,11 +271,10 @@ class MainWindow(QMainWindow):
         self._worker.error.connect(self._on_error)
         self._worker.start()
 
-    def _on_finished(self, stats):
+    def _on_finished(self, stats: dict[str, Any]) -> None:
         self.run_btn.setEnabled(True)
         self.status_label.setText("Run complete")
         self.progress_bar.setVisible(False)
-        agg = stats.get("aggregated") or {}
         self.stats_table.setRowCount(0)
         for r in stats.get("rows", []):
             row = self.stats_table.rowCount()
@@ -286,16 +299,16 @@ class MainWindow(QMainWindow):
                 self.chart.clear()
                 if rps_vals:
                     self.chart.plot(list(range(len(rps_vals))), rps_vals, pen="c")
-        except Exception:
-            pass
+        except ImportError:
+            return
 
-    def _on_error(self, msg):
+    def _on_error(self, msg: str) -> None:
         self.run_btn.setEnabled(True)
         self.status_label.setText("Run failed")
         self.progress_bar.setVisible(False)
         QMessageBox.critical(self, "Error", msg)
 
-    def _make_report_tab(self):
+    def _make_report_tab(self) -> Any:
         w = QWidget()
         lay = QVBoxLayout(w)
         self.report_text = QLabel("No run yet.")
@@ -304,7 +317,7 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.report_text)
         return w
 
-    def _make_settings_tab(self):
+    def _make_settings_tab(self) -> Any:
         w = QWidget()
         lay = QVBoxLayout(w)
         form = QFormLayout()
@@ -323,7 +336,7 @@ class MainWindow(QMainWindow):
         return w
 
 
-def main():
+def main() -> None:
     app = QApplication(sys.argv)
     win = MainWindow()
     win.show()

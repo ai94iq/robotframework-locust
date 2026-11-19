@@ -1,8 +1,5 @@
 """Tests for stats parsing."""
 
-import os
-import tempfile
-
 from LocustLibrary.stats import parse_stats_csv
 
 

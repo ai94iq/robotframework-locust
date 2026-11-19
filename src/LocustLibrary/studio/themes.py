@@ -1,6 +1,8 @@
 """Theme definitions for the studio GUI."""
 
-THEMES = {
+from typing import Any
+
+THEMES: dict[str, dict[str, Any]] = {
     "dark_console": {
         "name": "Dark Console",
         "qss": """
@@ -90,5 +92,5 @@ THEMES = {
 }
 
 
-def get_theme(name: str) -> dict:
+def get_theme(name: str) -> dict[str, Any]:
     return THEMES.get(name, THEMES["dark_console"])

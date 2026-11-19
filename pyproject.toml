@@ -66,6 +66,8 @@ target-version = "py311"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP", "B", "SIM"]
+# Robot Framework libraries use a CamelCase module name.
+ignore = ["N999"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -78,6 +80,7 @@ addopts = "-q --cov=LocustLibrary --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src/LocustLibrary"]
+omit = ["src/LocustLibrary/studio/*"]
 
 [tool.coverage.report]
 fail_under = 80

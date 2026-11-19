@@ -17,7 +17,7 @@ class Task:
     body: Any = None
     expected_status: int = 200
     keyword_name: str = ""
-    keyword_args: tuple = field(default_factory=tuple)
+    keyword_args: tuple[Any, ...] = field(default_factory=tuple)
 
 
 @dataclass
@@ -68,5 +68,5 @@ class Stats:
 
     rows: list[StatsRow] = field(default_factory=list)
     aggregated: StatsRow | None = None
-    errors: list[dict] = field(default_factory=list)
+    errors: list[dict[str, Any]] = field(default_factory=list)
     fail_ratio: float = 0.0
