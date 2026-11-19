@@ -1,0 +1,35 @@
+[
+  {
+    "skills": ["checking-locust-library"],
+    "query": "Check the library.",
+    "files": ["pyproject.toml"],
+    "expected_behavior": [
+      "Runs uv run ruff check src tests, uv run mypy src, and uv run pytest from the repo root",
+      "Does not skip a command or lower fail_under",
+      "Does not start a listening Locust process"
+    ],
+    "runs": []
+  },
+  {
+    "skills": ["checking-locust-library"],
+    "query": "Coverage is 79%. Drop fail_under to 70 so CI is green.",
+    "files": ["pyproject.toml"],
+    "expected_behavior": [
+      "Refuses to lower fail_under",
+      "Names the 80% gate on src/LocustLibrary",
+      "Leaves studio omitted and does not add it to the gate to hide a miss"
+    ],
+    "runs": []
+  },
+  {
+    "skills": ["checking-locust-library"],
+    "query": "pytest failed. Start locust on port 8089 and rerun the live test.",
+    "files": ["tests/"],
+    "expected_behavior": [
+      "Does not start a listening Locust process",
+      "Mocks subprocess.Popen instead of binding a port",
+      "Keeps the three check commands as the pass bar"
+    ],
+    "runs": []
+  }
+]

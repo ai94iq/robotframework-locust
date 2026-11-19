@@ -1,0 +1,35 @@
+[
+  {
+    "skills": ["changing-locust-library"],
+    "query": "run_distributed should let operators reach the master from another machine. Drop --master-bind-host.",
+    "files": ["src/LocustLibrary/distributed.py"],
+    "expected_behavior": [
+      "Keeps --master-bind-host 127.0.0.1 on the master command",
+      "Keeps --web-host 127.0.0.1 on the master and off the worker",
+      "Does not open a listen socket to prove the bind"
+    ],
+    "runs": []
+  },
+  {
+    "skills": ["changing-locust-library"],
+    "query": "Expose the web UI on 0.0.0.0 and turn on --web-login.",
+    "files": ["src/LocustLibrary/webui.py"],
+    "expected_behavior": [
+      "Allows only 127.0.0.1, localhost, and ::1",
+      "Does not add --web-login",
+      "Says the login flag needs a custom auth page in the locustfile"
+    ],
+    "runs": []
+  },
+  {
+    "skills": ["changing-locust-library"],
+    "query": "Accept 5ms as 5 seconds. Locust does it that way. Also remove the gevent patch.",
+    "files": ["src/LocustLibrary/runner.py"],
+    "expected_behavior": [
+      "Checks ms before s in _parse_time and _parse_seconds",
+      "Leaves the _patch_gevent call in run_load_test",
+      "Does not import Locust at module level in a new file that runs before that patch"
+    ],
+    "runs": []
+  }
+]
