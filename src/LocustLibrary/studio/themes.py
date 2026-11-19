@@ -38,6 +38,8 @@ THEMES = {
         QPushButton#danger { background: #dc2626; }
         QPushButton#ghost { background: transparent; border: 1px solid #e4e4e7; color: #18181b; }
         QLineEdit, QSpinBox, QDoubleSpinBox { background: #fafafa; border: 1px solid #e4e4e7; color: #18181b; padding: 8px 10px; border-radius: 8px; }
+        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 2px solid #18181b; outline: none; }
+        QPushButton:focus { outline: 2px solid #18181b; outline-offset: 2px; }
         QTableWidget { background: #fff; gridline-color: #f4f4f5; }
         QHeaderView::section { background: #f4f4f5; color: #a1a1aa; padding: 8px; border: none; font-size: 10px; text-transform: uppercase; }
         QListWidget { background: #fff; border: 1px solid #e4e4e7; border-radius: 8px; }
@@ -54,7 +56,8 @@ THEMES = {
         QTabWidget::pane { border: 1px solid #1a1a2e; background: #05050a; }
         QTabBar::tab { background: #0a0a14; color: #888; padding: 8px 16px; border: 1px solid #1a1a2e; }
         QTabBar::tab:selected { background: #00ffff; color: #05050a; }
-        QPushButton { background: #00ffff; color: #05050a; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 700; }
+        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 2px solid #00ffff; outline: none; }
+        QPushButton:focus { outline: 2px solid #00ffff; outline-offset: 2px; }
         QPushButton:hover { background: #00e6e6; }
         QPushButton#danger { background: #ff0066; color: #fff; }
         QPushButton#ghost { background: transparent; border: 1px solid #1a1a2e; color: #00ffff; }

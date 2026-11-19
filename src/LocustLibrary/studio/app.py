@@ -207,6 +207,17 @@ class MainWindow(QMainWindow):
         self._last_stats = stats
         self.report_text.setText(str(stats))
 
+        # update chart if available
+        try:
+            import pyqtgraph as pg
+            if isinstance(self.chart, pg.PlotWidget):
+                rps_vals = [r.get("rps", 0) for r in stats.get("rows", [])]
+                self.chart.clear()
+                if rps_vals:
+                    self.chart.plot(list(range(len(rps_vals))), rps_vals, pen="c")
+        except Exception:
+            pass
+
     def _on_error(self, msg):
         self.run_btn.setEnabled(True)
         self.status_label.setText("Error")
