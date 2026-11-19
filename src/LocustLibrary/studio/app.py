@@ -63,8 +63,6 @@ class MainWindow(QMainWindow):
         self._worker = None
 
         self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
-
         self._build_tab = self._make_build_tab()
         self._run_tab = self._make_run_tab()
         self._report_tab = self._make_report_tab()
@@ -74,6 +72,16 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._run_tab, "Run")
         self.tabs.addTab(self._report_tab, "Report")
         self.tabs.addTab(self._settings_tab, "Settings")
+
+        from PySide6.QtWidgets import QSplitter
+        splitter = QSplitter(Qt.Horizontal)
+        self.sidebar = self._make_sidebar()
+        self.right_panel = self._make_right_panel()
+        splitter.addWidget(self.sidebar)
+        splitter.addWidget(self.tabs)
+        splitter.addWidget(self.right_panel)
+        splitter.setSizes([220, 920, 280])
+        self.setCentralWidget(splitter)
 
         self.setStatusBar(QStatusBar())
         from PySide6.QtGui import QShortcut, QKeySequence
@@ -86,6 +94,30 @@ class MainWindow(QMainWindow):
     def apply_theme(self, name):
         self._theme_name = name
         self.setStyleSheet(get_theme(name)["qss"])
+
+    def _make_sidebar(self):
+        from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Scenarios"))
+        lw = QListWidget()
+        lw.addItems(["Checkout Flow", "API Smoke", "Search Load"])
+        lay.addWidget(lw)
+        lay.addWidget(QLabel("Tasks"))
+        tw = QListWidget()
+        tw.addItems(["GET /home (w2)", "POST /checkout (w3)", "GET /search (w1)"])
+        lay.addWidget(tw)
+        return w
+
+    def _make_right_panel(self):
+        from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(QLabel("Live log"))
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        lay.addWidget(self.log_text)
+        return w
 
     def _make_build_tab(self):
         w = QWidget()
@@ -210,6 +242,8 @@ class MainWindow(QMainWindow):
         # store for report tab
         self._last_stats = stats
         self.report_text.setText(str(stats))
+        if hasattr(self, "log_text"):
+            self.log_text.append(f"Run finished: {stats.get('aggregated', {})}")
 
         # update chart if available
         try:
