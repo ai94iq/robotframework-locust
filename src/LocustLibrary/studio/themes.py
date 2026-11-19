@@ -12,7 +12,8 @@ THEMES = {
         QTabBar::tab:selected { background: #2563eb; color: #fff; }
         QFrame { border-radius: 8px; }
         QWidget#panel { background: #1f1f23; border: 1px solid #2a2a2e; border-radius: 12px; padding: 16px; }
-        QPushButton { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 500; }
+        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 2px solid #2563eb; outline: none; }
+        QPushButton:focus { outline: 2px solid #2563eb; outline-offset: 2px; }
         QPushButton:hover { background: #1d4ed8; }
         QPushButton#danger { background: #dc2626; }
         QPushButton#ghost { background: transparent; border: 1px solid #2a2a2e; color: #e4e4e7; }

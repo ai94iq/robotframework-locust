@@ -76,7 +76,12 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._settings_tab, "Settings")
 
         self.setStatusBar(QStatusBar())
-        self.apply_theme(self._theme_name)
+        from PySide6.QtGui import QShortcut, QKeySequence
+
+        sc_run = QShortcut(QKeySequence("Ctrl+R"), self)
+        sc_run.activated.connect(self._run)
+        sc_settings = QShortcut(QKeySequence("Ctrl+,"), self)
+        sc_settings.activated.connect(lambda: self.tabs.setCurrentIndex(3))
 
     def apply_theme(self, name):
         self._theme_name = name
@@ -95,6 +100,7 @@ class MainWindow(QMainWindow):
         lay.addLayout(form)
 
         self.task_list = QListWidget()
+        self.task_list.setPlaceholderText("No tasks yet. Add one below.")
         lay.addWidget(QLabel("Tasks"))
         lay.addWidget(self.task_list)
 
@@ -150,6 +156,17 @@ class MainWindow(QMainWindow):
         self.stats_table = QTableWidget(0, 6)
         self.stats_table.setHorizontalHeaderLabels(["Name", "Reqs", "Fails", "Avg", "p95", "RPS"])
         lay.addWidget(self.stats_table)
+
+        try:
+            import pyqtgraph as pg
+            self.chart = pg.PlotWidget()
+            self.chart.setBackground("#141416")
+            self.chart.setTitle("RPS over time")
+            self.chart.showGrid(x=True, y=True, alpha=0.2)
+            self.chart.setMinimumHeight(180)
+        except Exception:
+            self.chart = QLabel("Install pyqtgraph for live charts")
+        lay.addWidget(self.chart)
 
         self.status_label = QLabel("Idle")
         lay.addWidget(self.status_label)
