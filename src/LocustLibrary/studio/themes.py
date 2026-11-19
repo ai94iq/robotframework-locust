@@ -4,7 +4,8 @@ THEMES = {
     "dark_console": {
         "name": "Dark Console",
         "qss": """
-        QWidget { background: #1a1a1d; color: #e4e4e7; font-family: 'Segoe UI', sans-serif; font-size: 13px; }
+        QWidget { background: #1a1a1d; color: #f4f4f5; font-family: 'Segoe UI', sans-serif; font-size: 13px; }
+        * { color: #f4f4f5; }
         QMainWindow { background: #1a1a1d; }
         QTabWidget::pane { border: 1px solid #2a2a2e; background: #1a1a1d; }
         QTabBar::tab { background: #141416; color: #a1a1aa; padding: 8px 16px; border: 1px solid #2a2a2e; }
@@ -46,7 +47,8 @@ THEMES = {
     "neon_dark": {
         "name": "Neon Dark",
         "qss": """
-        QWidget { background: #05050a; color: #e0e0ff; font-family: 'Consolas', monospace; font-size: 12px; }
+        QWidget { background: #05050a; color: #ffffff; font-family: 'Consolas', monospace; font-size: 12px; }
+        * { color: #ffffff; }
         QMainWindow { background: #05050a; }
         QTabWidget::pane { border: 1px solid #1a1a2e; background: #05050a; }
         QTabBar::tab { background: #0a0a14; color: #888; padding: 8px 16px; border: 1px solid #1a1a2e; }
