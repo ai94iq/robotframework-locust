@@ -96,6 +96,11 @@ class MainWindow(QMainWindow):
         self._theme_name = name
         self.setStyleSheet(get_theme(name)["qss"])
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "sidebar"):
+            self.sidebar.setVisible(self.width() >= 1000)
+
     def _make_sidebar(self):
         from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget
         w = QWidget()
