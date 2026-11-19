@@ -2,26 +2,67 @@
 
 import os
 import time
+from collections.abc import Callable
+from typing import Any
 
-from locust import HttpUser
+from locust import HttpUser, between
 from locust.env import Environment
 
-from .scenario import Scenario, RunConfig, Stats, StatsRow, Task
+from .scenario import RunConfig, Scenario, Stats, StatsRow, Task
 
 
-def _make_task_fn(task: Task):
-    """Build a module-level task function for a Task."""
+def _call_keyword(name: str) -> None:
+    from robot.libraries.BuiltIn import BuiltIn
 
-    def task_fn(user):
-        if task.kind == "http":
-            method = task.method.upper()
-            fn = getattr(user.client, method.lower(), None)
-            if fn is None:
-                return
-            fn(task.path, headers=task.headers or {}, data=task.body, name=task.name)
+    BuiltIn().run_keyword(name)
 
-    task_fn.__name__ = task.name.replace(" ", "_")
+
+def _measure_keyword(user: Any, keyword_name: str) -> None:
+    request = user.environment.events.request
+    with request.measure("RF", keyword_name):
+        _call_keyword(keyword_name)
+
+
+def _run_http(user: Any, task: Task) -> None:
+    method = task.method.upper()
+    fn = getattr(user.client, method.lower(), None)
+    if fn is None:
+        return
+    fn(task.path, headers=task.headers or {}, data=task.body, name=task.name)
+
+
+def _make_task_fn(task: Task) -> Callable[[Any], None]:
+    """Build one Locust task for an HTTP call or an RF keyword."""
+
+    def task_fn(user: Any) -> None:
+        if task.kind == "rf":
+            _measure_keyword(user, task.keyword_name)
+        elif task.kind == "http":
+            _run_http(user, task)
+
+    task_fn.__name__ = task.name.replace(" ", "_") or "task"
     return task_fn
+
+
+def _keyword_method(keyword_name: str) -> Callable[[Any], None]:
+    def method(user: Any) -> None:
+        _measure_keyword(user, keyword_name)
+
+    return method
+
+
+def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
+    attrs: dict[str, Any] = {
+        "host": scenario.host,
+        "tasks": tasks,
+        "abstract": False,
+        "wait_time": between(scenario.wait_min, scenario.wait_max),
+    }
+    if scenario.on_start:
+        attrs["on_start"] = _keyword_method(scenario.on_start)
+    if scenario.on_stop:
+        attrs["on_stop"] = _keyword_method(scenario.on_stop)
+    return type("RFUser", (HttpUser,), attrs)
 
 
 _PATCHED = {"done": False}
@@ -43,45 +84,41 @@ def _patch_gevent() -> None:
     _PATCHED["done"] = True
 
 
-def _stats_from_env(env) -> Stats:
+def _pct(entry: object, quantile: float) -> float:
+    reader = getattr(entry, "get_response_time_percentile", None)
+    if reader is None:
+        return 0.0
+    return float(reader(quantile))
+
+
+def _row_from_entry(name: str, entry: object) -> StatsRow:
+    return StatsRow(
+        name=name,
+        request_count=int(getattr(entry, "num_requests", 0)),
+        failure_count=int(getattr(entry, "num_failures", 0)),
+        median=float(getattr(entry, "median_response_time", 0.0)),
+        average=float(getattr(entry, "avg_response_time", 0.0)),
+        min=float(getattr(entry, "min_response_time", 0.0)),
+        max=float(getattr(entry, "max_response_time", 0.0)),
+        rps=float(getattr(entry, "total_rps", 0.0)),
+        failures_s=0.0,
+        p50=_pct(entry, 0.5),
+        p90=_pct(entry, 0.9),
+        p95=_pct(entry, 0.95),
+        p99=_pct(entry, 0.99),
+        p999=_pct(entry, 0.999),
+    )
+
+
+def _stats_from_env(env: Any) -> Stats:
     stats = Stats()
     rs = env.stats
-    for (method, name), entry in (rs.entries or {}).items():
-        sr = StatsRow(
-            name=name if name else "/",
-            request_count=getattr(entry, "num_requests", 0),
-            failure_count=getattr(entry, "num_failures", 0),
-            median=getattr(entry, "median_response_time", 0.0),
-            average=getattr(entry, "avg_response_time", 0.0),
-            min=getattr(entry, "min_response_time", 0.0),
-            max=getattr(entry, "max_response_time", 0.0),
-            rps=getattr(entry, "total_rps", 0.0),
-            failures_s=0.0,
-            p50=entry.get_response_time_percentile(0.5) if hasattr(entry, "get_response_time_percentile") else 0.0,
-            p90=entry.get_response_time_percentile(0.9) if hasattr(entry, "get_response_time_percentile") else 0.0,
-            p95=entry.get_response_time_percentile(0.95) if hasattr(entry, "get_response_time_percentile") else 0.0,
-            p99=entry.get_response_time_percentile(0.99) if hasattr(entry, "get_response_time_percentile") else 0.0,
-        )
-        stats.rows.append(sr)
-    total = rs.total
-    agg = StatsRow(
-        name="Aggregated",
-        request_count=getattr(total, "num_requests", 0),
-        failure_count=getattr(total, "num_failures", 0),
-        median=getattr(total, "median_response_time", 0.0),
-        average=getattr(total, "avg_response_time", 0.0),
-        min=getattr(total, "min_response_time", 0.0),
-        max=getattr(total, "max_response_time", 0.0),
-        rps=getattr(total, "total_rps", 0.0),
-        failures_s=0.0,
-        p50=total.get_response_time_percentile(0.5) if hasattr(total, "get_response_time_percentile") else 0.0,
-        p90=total.get_response_time_percentile(0.9) if hasattr(total, "get_response_time_percentile") else 0.0,
-        p95=total.get_response_time_percentile(0.95) if hasattr(total, "get_response_time_percentile") else 0.0,
-        p99=total.get_response_time_percentile(0.99) if hasattr(total, "get_response_time_percentile") else 0.0,
-    )
-    stats.aggregated = agg
-    if agg.request_count:
-        stats.fail_ratio = agg.failure_count / agg.request_count
+    for (_method, name), entry in (rs.entries or {}).items():
+        stats.rows.append(_row_from_entry(name if name else "/", entry))
+    stats.aggregated = _row_from_entry("Aggregated", rs.total)
+    if stats.aggregated.request_count:
+        counted = stats.aggregated
+        stats.fail_ratio = counted.failure_count / counted.request_count
     return stats
 
 
@@ -90,15 +127,11 @@ def run_load_test(scenario: Scenario, config: RunConfig) -> Stats:
     _patch_gevent()
 
     task_fns = [_make_task_fn(t) for t in scenario.tasks]
-    weighted: list = []
-    for t, fn in zip(scenario.tasks, task_fns):
-        weighted.extend([fn] * max(1, t.weight))
+    weighted: list[Any] = []
+    for task, fn in zip(scenario.tasks, task_fns, strict=True):
+        weighted.extend([fn] * max(1, task.weight))
 
-    user_class = type(
-        "RFUser",
-        (HttpUser,),
-        {"host": scenario.host, "tasks": weighted, "abstract": False},
-    )
+    user_class = _user_class(scenario, weighted)
 
     env = Environment(user_classes=[user_class])
     runner = env.create_local_runner()

@@ -1,10 +1,12 @@
 """Robot Framework library for authoring and running Locust load tests in RF syntax."""
 
+import subprocess
+
 from robot.api import logger
 from robot.api.deco import keyword
 
-from .scenario import Scenario, Task, RunConfig
 from .runner import run_load_test
+from .scenario import RunConfig, Scenario, Stats, StatsRow, Task
 
 __version__ = "0.1.0"
 
@@ -22,6 +24,31 @@ def _parse_seconds(value: str) -> float:
     return float(value)
 
 
+_PERCENTILE_FIELDS = {
+    "50": "p50",
+    "90": "p90",
+    "95": "p95",
+    "99": "p99",
+    "999": "p999",
+}
+
+
+def _keyword_name(name: str) -> str:
+    name = name.strip()
+    if not name:
+        raise ValueError("keyword name is required")
+    return name
+
+
+def _measured_percentile(row: StatsRow, percentile: str) -> float:
+    if row.request_count == 0:
+        raise RuntimeError("No requests recorded.")
+    field = _PERCENTILE_FIELDS.get(percentile.lower().removeprefix("p"))
+    if field is None:
+        raise RuntimeError(f"Percentile not measured: {percentile}")
+    return float(getattr(row, field))
+
+
 class LocustLibrary:
     """LocustLibrary drives load tests through Locust with RF-native syntax."""
 
@@ -30,7 +57,10 @@ class LocustLibrary:
     def __init__(self) -> None:
         self._scenario: Scenario | None = None
         self._config: RunConfig | None = None
-        self._stats = None
+        self._stats: Stats | None = None
+        self._web_proc: subprocess.Popen[bytes] | None = None
+        self._dist_master: subprocess.Popen[bytes] | None = None
+        self._dist_workers: list[subprocess.Popen[bytes]] | None = None
 
     @keyword
     def create_load_test(self, host: str) -> None:
@@ -40,6 +70,7 @@ class LocustLibrary:
         host = validate_host(host)
         self._scenario = Scenario(host=host)
         self._config = RunConfig()
+        self._stats = None
 
     @keyword
     def set_wait_time(self, minimum: str, maximum: str) -> None:
@@ -67,7 +98,7 @@ class LocustLibrary:
         if self._scenario is None:
             raise RuntimeError("Call Create Load Test first.")
         self._scenario.tasks.append(
-            Task(name=name, kind="rf", weight=weight, keyword_name=keyword)
+            Task(name=name, kind="rf", weight=weight, keyword_name=_keyword_name(keyword))
         )
 
     @keyword
@@ -75,16 +106,18 @@ class LocustLibrary:
         """Set the on_start keyword name."""
         if self._scenario is None:
             raise RuntimeError("Call Create Load Test first.")
-        self._scenario.on_start = keyword_name
+        self._scenario.on_start = _keyword_name(keyword_name)
 
     @keyword
     def set_on_stop(self, keyword_name: str) -> None:
         """Set the on_stop keyword name."""
         if self._scenario is None:
             raise RuntimeError("Call Create Load Test first.")
-        self._scenario.on_stop = keyword_name
+        self._scenario.on_stop = _keyword_name(keyword_name)
 
-    def _add_http_task(self, name, method, path, weight, expected_status):
+    def _add_http_task(
+        self, name: str, method: str, path: str, weight: int, expected_status: int
+    ) -> None:
         if self._scenario is None:
             raise RuntimeError("Call Create Load Test first.")
         self._scenario.tasks.append(
@@ -108,7 +141,7 @@ class LocustLibrary:
         logger.info(f"Load test finished: {self._stats}")
 
     @keyword
-    def get_locust_stats(self) -> dict:
+    def get_locust_stats(self) -> dict[str, object]:
         """Return parsed stats as a dict."""
         if self._stats is None:
             return {}
@@ -117,21 +150,26 @@ class LocustLibrary:
                 "fail_ratio": self._stats.fail_ratio}
 
     @keyword
-    def get_aggregated_stats(self) -> dict:
+    def get_aggregated_stats(self) -> dict[str, object]:
         """Return aggregated stats."""
         if self._stats is None or self._stats.aggregated is None:
             return {}
         return self._stats.aggregated.__dict__
 
+    def _aggregated(self) -> StatsRow:
+        stats = self._stats
+        if stats is None or stats.aggregated is None:
+            raise RuntimeError("No stats available. Run Load Test first.")
+        if stats.aggregated.request_count == 0:
+            raise RuntimeError("No requests recorded.")
+        return stats.aggregated
+
     @keyword
     def should_have_no_failures(self) -> None:
         """Fail if any request failed."""
-        if self._stats is None or self._stats.aggregated is None:
-            raise RuntimeError("No stats available. Run Load Test first.")
-        if self._stats.aggregated.failure_count > 0:
-            raise AssertionError(
-                f"Failures: {self._stats.aggregated.failure_count}"
-            )
+        row = self._aggregated()
+        if row.failure_count > 0:
+            raise AssertionError(f"Failures: {row.failure_count}")
 
     @keyword
     def should_meet_response_time(self, endpoint: str, percentile: str,
@@ -143,7 +181,6 @@ class LocustLibrary:
             max_ms = float(maximum.lower().rstrip("ms"))
         else:
             max_ms = _parse_seconds(maximum) * 1000
-        p = percentile.lower().replace("p", "")
         target = None
         for r in self._stats.rows:
             if r.name == endpoint:
@@ -153,8 +190,7 @@ class LocustLibrary:
             target = self._stats.aggregated
         if target is None:
             raise RuntimeError(f"Endpoint not found: {endpoint}")
-        attr = "p" + p
-        actual = getattr(target, attr, 0.0)
+        actual = _measured_percentile(target, percentile)
         if actual > max_ms:
             raise AssertionError(
                 f"{endpoint} {percentile}={actual}ms > {max_ms}ms"
@@ -163,35 +199,36 @@ class LocustLibrary:
     @keyword
     def should_meet_throughput(self, minimum: str) -> None:
         """Assert RPS >= minimum."""
-        if self._stats is None or self._stats.aggregated is None:
-            raise RuntimeError("No stats available. Run Load Test first.")
+        row = self._aggregated()
         min_rps = float(minimum)
-        if self._stats.aggregated.rps < min_rps:
-            raise AssertionError(
-                f"RPS {self._stats.aggregated.rps} < {min_rps}"
-            )
+        if row.rps < min_rps:
+            raise AssertionError(f"RPS {row.rps} < {min_rps}")
 
     @keyword
     def should_meet_error_rate(self, maximum: str) -> None:
         """Assert error rate <= maximum percent."""
-        if self._stats is None:
-            raise RuntimeError("No stats available. Run Load Test first.")
+        row = self._aggregated()
         max_rate = float(maximum.rstrip("%")) / 100.0
-        if self._stats.fail_ratio > max_rate:
-            raise AssertionError(
-                f"Error rate {self._stats.fail_ratio:.2%} > {max_rate:.2%}"
-            )
+        rate = row.failure_count / row.request_count
+        if rate > max_rate:
+            raise AssertionError(f"Error rate {rate:.2%} > {max_rate:.2%}")
 
     @keyword
     def export_report(self, base_path: str = "locust") -> str:
         """Export CSV report. Returns base path."""
-        return base_path
+        if self._stats is None:
+            raise RuntimeError("No stats available. Run Load Test first.")
+        from .reporting import write_stats_csv
+
+        return write_stats_csv(self._stats, base_path)
 
     @keyword
     def start_locust_web(self, locustfile: str, port: int = 8089) -> None:
         """Start Locust web UI as subprocess."""
-        from .webui import start_web_ui
+        from .webui import start_web_ui, stop_web_ui
 
+        if self._web_proc is not None:
+            stop_web_ui(self._web_proc)
         self._web_proc = start_web_ui(locustfile, port=port)
 
     @keyword
@@ -199,8 +236,9 @@ class LocustLibrary:
         """Stop Locust web UI."""
         from .webui import stop_web_ui
 
-        if getattr(self, "_web_proc", None) is not None:
-            stop_web_ui(self._web_proc)
+        proc = self._web_proc
+        if proc is not None:
+            stop_web_ui(proc)
             self._web_proc = None
 
     @keyword
@@ -208,4 +246,16 @@ class LocustLibrary:
         """Run Locust in distributed mode."""
         from .distributed import run_distributed as _run
 
-        _run(locustfile, processes=processes)
+        self.stop_distributed()
+        self._dist_master, self._dist_workers = _run(
+            locustfile, processes=processes
+        )
+
+    @keyword
+    def stop_distributed(self) -> None:
+        """Stop the master and workers from Run Distributed."""
+        from .distributed import stop_distributed as _stop
+
+        _stop(self._dist_master, self._dist_workers)
+        self._dist_master = None
+        self._dist_workers = None

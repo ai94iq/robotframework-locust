@@ -26,6 +26,11 @@ report.html
 # Impeccable
 .impeccable/mocks/
 
+# Secrets
+.env
+*.pem
+*.key
+
 # IDE
 .vscode/
 .idea/

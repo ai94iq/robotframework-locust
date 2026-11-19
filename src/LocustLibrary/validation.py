@@ -2,12 +2,16 @@
 
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def validate_host(host: str) -> str:
     host = (host or "").strip()
-    if not (host.startswith("http://") or host.startswith("https://")):
-        raise ValueError("host must start with http:// or https://")
+    parts = urlsplit(host)
+    if parts.scheme not in {"http", "https"} or parts.hostname is None:
+        raise ValueError("host must be an http or https URL")
+    if parts.username is not None or parts.password is not None:
+        raise ValueError("host must not include credentials")
     return host
 
 

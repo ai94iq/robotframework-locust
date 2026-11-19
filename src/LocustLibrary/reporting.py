@@ -1,10 +1,11 @@
 """Reporting: RF log + CSV/HTML export."""
 
-import os
+import csv
 from pathlib import Path
 
 from locust.stats import StatsCSVFileWriter
-from locust import __version__ as locust_version
+
+from .scenario import Stats
 
 
 def write_csv_report(env, base_filepath: str, full_history: bool = True, output_dir: str | None = None) -> str:
@@ -29,6 +30,27 @@ def write_csv_report(env, base_filepath: str, full_history: bool = True, output_
     except Exception:
         pass
     return base_filepath
+
+
+def write_stats_csv(stats: Stats, base_filepath: str, output_dir: str | None = None) -> str:
+    """Write saved stats to CSV. Returns the validated base path."""
+    from .validation import validate_output_path
+
+    base = validate_output_path(base_filepath, output_dir)
+    path = Path(f"{base}_stats.csv")
+    fields = (
+        "name", "request_count", "failure_count",
+        "p50", "p90", "p95", "p99", "p999",
+    )
+    rows = list(stats.rows)
+    if stats.aggregated is not None:
+        rows.append(stats.aggregated)
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({name: getattr(row, name) for name in fields})
+    return base
 
 
 def write_html_report(env) -> str:
