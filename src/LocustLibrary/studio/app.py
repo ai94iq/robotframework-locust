@@ -11,7 +11,7 @@ try:
         QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
         QPushButton, QLineEdit, QLabel, QSpinBox, QDoubleSpinBox, QListWidget,
         QListWidgetItem, QTableWidget, QTableWidgetItem, QComboBox, QFileDialog,
-        QStatusBar, QMessageBox, QFormLayout, QGroupBox, QProgressBar, QFrame, QTextEdit, QSplitter,
+        QStatusBar, QMessageBox, QFormLayout, QGroupBox, QProgressBar, QFrame, QTextEdit, QSplitter, QCheckBox,
     )
 except ImportError as e:  # pragma: no cover
     raise SystemExit(f"PySide6 required for studio: {e}")
@@ -100,6 +100,13 @@ class MainWindow(QMainWindow):
         self._theme_name = name
         self.setStyleSheet(get_theme(name)["qss"])
 
+    def _toggle_rtl(self, checked):
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QApplication
+        QApplication.instance().setLayoutDirection(
+            Qt.RightToLeft if checked else Qt.LeftToRight
+        )
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "sidebar"):
@@ -126,6 +133,7 @@ class MainWindow(QMainWindow):
         lay.addWidget(QLabel("Live log"))
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
+        self.log_text.setAccessibleName("Live log")
         lay.addWidget(self.log_text)
         return w
 
@@ -143,6 +151,7 @@ class MainWindow(QMainWindow):
         lay.addLayout(form)
 
         self.task_list = QListWidget()
+        self.task_list.setAccessibleName("Task list")
         lay.addWidget(QLabel("Tasks"))
         self.empty_tasks_label = QLabel("No tasks yet. Add one below.")
         lay.addWidget(self.empty_tasks_label)
@@ -205,13 +214,14 @@ class MainWindow(QMainWindow):
         lay.addWidget(self.run_btn)
 
         self.stats_table = QTableWidget(0, 6)
+        self.stats_table.setAccessibleName("Endpoint statistics")
         self.stats_table.setHorizontalHeaderLabels(["Name", "Reqs", "Fails", "Avg", "p95", "RPS"])
         lay.addWidget(self.stats_table)
 
         try:
             import pyqtgraph as pg
             self.chart = pg.PlotWidget()
-            self.chart.setBackground("#141416")
+            self.chart.setBackground(None)
             self.chart.setTitle("RPS over time")
             self.chart.showGrid(x=True, y=True, alpha=0.2)
             self.chart.setMinimumHeight(180)
@@ -305,6 +315,9 @@ class MainWindow(QMainWindow):
             lambda: self.apply_theme(self.theme_combo.currentData())
         )
         form.addRow("Theme", self.theme_combo)
+        self.rtl_check = QCheckBox("Right-to-left layout")
+        self.rtl_check.toggled.connect(self._toggle_rtl)
+        form.addRow(self.rtl_check)
         lay.addLayout(form)
         lay.addStretch()
         return w
