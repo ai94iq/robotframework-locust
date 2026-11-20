@@ -100,6 +100,7 @@ dialog.zoom::backdrop { background: rgb(10 11 14 / .86); }
 dialog.zoom:focus, dialog.zoom:focus-visible { outline: none; }
 dialog.zoom img { display: block; max-width: 96vw; max-height: calc(96vh - 40px); width: auto; height: auto; border-radius: 8px; cursor: zoom-out; }
 dialog.zoom p { margin-top: 8px; color: #eceef0; font-size: 15px; text-align: center; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 960px) {
   .links { grid-template-columns: minmax(0, 1fr); }
   .doors, .studio { grid-template-columns: minmax(0, 1fr); }
@@ -137,6 +138,7 @@ dialog.zoom p { margin-top: 8px; color: #eceef0; font-size: 15px; text-align: ce
     </div>
     <p class="copied" role="status" aria-live="polite"></p>
   </div>
+  <h2 class="sr">Three ways in</h2>
   <div class="doors">
     <div class="door">
       <h3>Write it in Robot</h3>

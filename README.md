@@ -1,5 +1,8 @@
 # robotframework-locust
 
+[Website](https://ai94iq.github.io/robotframework-locust/) | [PyPI](https://pypi.org/project/robotframework-locust/) |
+[Keyword reference](https://ai94iq.github.io/robotframework-locust/keywords.html)
+
 A Robot Framework library that builds and runs Locust load tests. You write
 the load as a Robot suite: the library creates the Locust users, runs them
 headless and checks the stats with keywords. Locust Studio shows a run live,

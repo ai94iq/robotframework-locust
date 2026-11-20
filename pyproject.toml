@@ -41,7 +41,9 @@ locust-studio = "LocustLibrary.studio.app:main"
 rflocust-k6 = "LocustLibrary.k6.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/ai94iq/robotframework-locust"
+Homepage = "https://ai94iq.github.io/robotframework-locust/"
+Documentation = "https://ai94iq.github.io/robotframework-locust/keywords.html"
+PyPI = "https://pypi.org/project/robotframework-locust/"
 Source = "https://github.com/ai94iq/robotframework-locust"
 Issues = "https://github.com/ai94iq/robotframework-locust/issues"
 Changelog = "https://github.com/ai94iq/robotframework-locust/blob/main/CHANGELOG.md"
