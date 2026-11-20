@@ -2,6 +2,9 @@
 
 ## 0.1.0 (unreleased)
 
+- rflocust-k6 reads `sleep(THINK)` when THINK is a top-level number constant
+  or `Number(__ENV.X || n)`. The wait time is the default `n`. Before, the
+  function became a hand port and the wait time was 0s.
 - Write Stats CSV puts an apostrophe before a name that starts with =, +, -,
   @, tab or CR, so a spreadsheet shows it as text and doesn't run it.
 - Should Meet Response Time and Should Meet Error Rate check every row with the

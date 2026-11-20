@@ -73,7 +73,7 @@ Notes on the rows:
   flagged approximate.
 - Stage timings come from the first scenario. The report says so when another
   scenario uses different timings.
-- The last `sleep` with a number in an exec function sets the wait time.
+- The last `sleep` in an exec function sets the wait time.
 - A script with no thresholds gets `Should Have No Failures` in its Check
   keyword, and an approximate row in the report.
 - A threshold keyed to an endpoint, such as `http_req_duration{endpoint:login}`,
@@ -90,7 +90,10 @@ A function is plain when each of its statements is one of these:
   URL. The body and params must be literals. A body wrapped in `JSON.stringify`
   around a literal counts too.
 - `check()`. The check is skipped, so k6 checks are not converted.
-- `sleep` with a number literal.
+- `sleep` with a number literal, or with the name of a top-level `const` that
+  holds a number or `Number(__ENV.X || n)`. The second form uses its default `n`;
+  a `-e X=...` value does not change it. `parseFloat` and `parseInt` work like
+  `Number`.
 - A `const` or `let` that holds one of the calls above.
 
 Any other statement makes the function a hand port. The report gives the first
@@ -126,9 +129,10 @@ that name, so a different name leaves the check with no row to read.
 
 ## Limits
 
-- A think time held in a variable is not a number literal. The function
-  becomes a hand port at that line. The wait time stays 0s when no literal
-  `sleep` is left. Set the wait time by hand.
+- A think time held in any other variable, such as one declared inside the
+  function, is not read. The function becomes a hand port at that line. The
+  wait time stays 0s when no readable `sleep` is left. Set the wait time by
+  hand.
 - k6 thresholds are strict: `p(95)<800` fails at exactly 800 ms. The Robot check
   fails only above its maximum, so 800ms passes there. Use a maximum one
   millisecond lower if you need the same result.

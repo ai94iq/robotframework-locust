@@ -78,3 +78,39 @@ def test_raw_string_body_is_kept() -> None:
 
 def test_non_exported_functions_are_ignored() -> None:
     assert scan.scan_source("function helper() { http.get('https://h/'); }") == []
+
+NAMED_THINK = """
+const THINK = Number(__ENV.THINK_SECONDS || 2);
+const PAUSE = 0.5;
+
+export function envThink() {
+  http.get("https://h/");
+  sleep(THINK);
+}
+
+export function plainThink() {
+  sleep(PAUSE);
+}
+
+export function unknownThink() {
+  sleep(later);
+}
+"""
+
+
+@pytest.fixture(scope="module")
+def named() -> dict[str, scan.ExecFunction]:
+    return {f.name: f for f in scan.scan_source(NAMED_THINK)}
+
+
+def test_think_from_env_default(named: dict[str, scan.ExecFunction]) -> None:
+    assert named["envThink"].simple
+    assert named["envThink"].think_s == 2.0
+
+
+def test_think_from_number_constant(named: dict[str, scan.ExecFunction]) -> None:
+    assert named["plainThink"].think_s == 0.5
+
+
+def test_unknown_think_needs_hand_port(named: dict[str, scan.ExecFunction]) -> None:
+    assert named["unknownThink"].reason == "line 15: later is not a literal"

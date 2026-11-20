@@ -1,7 +1,8 @@
 """Find a k6 script's exec functions and the plain HTTP calls inside them.
 
 A function is plain when every statement is an http.<verb> call with a string URL
-and literal body and params, a check() or a sleep(). Anything else needs a hand port,
+and literal body and params, a check() or a sleep(). A sleep may name a top-level number constant, or one
+read as Number(__ENV.X || n), which counts as its default n. Anything else needs a hand port,
 and `reason` says which line stopped the scan.
 """
 
@@ -45,27 +46,61 @@ class ExecFunction:
 
 def scan_source(source: str) -> list[ExecFunction]:
     root = Parser(_JS).parse(source.encode("utf-8")).root_node
-    found = (_exported(node) for node in root.named_children if node.type == "export_statement")
+    constants = _constants(root)
+    found = (_exported(node, constants) for node in root.named_children
+             if node.type == "export_statement")
     return [fn for fn in found if fn is not None]
 
 
-def _exported(node: Node) -> ExecFunction | None:
+def _constants(root: Node) -> dict[str, float]:
+    values: dict[str, float] = {}
+    for node in root.named_children:
+        if node.type == "lexical_declaration":
+            values.update(_declared_numbers(node))
+    return values
+
+
+def _declared_numbers(declaration: Node) -> dict[str, float]:
+    values: dict[str, float] = {}
+    for declarator in declaration.named_children:
+        name = declarator.child_by_field_name("name")
+        number = _number(declarator.child_by_field_name("value"))
+        if name is not None and number is not None:
+            values[_text(name)] = number
+    return values
+
+
+def _number(node: Node | None) -> float | None:
+    if node is not None and node.type == "call_expression" and _text(
+        node.child_by_field_name("function")
+    ) in ("Number", "parseFloat", "parseInt"):
+        args = node.child_by_field_name("arguments")
+        node = args.named_children[0] if args and args.named_children else None
+    if node is not None and node.type == "binary_expression" and _text(
+        node.child_by_field_name("left")
+    ).startswith("__ENV."):
+        node = node.child_by_field_name("right")
+    return float(_text(node)) if node is not None and node.type == "number" else None
+
+
+def _exported(node: Node, constants: dict[str, float]) -> ExecFunction | None:
     function = next((c for c in node.named_children if c.type in _FUNCTIONS), None)
     if function is None:
         return None
     name_node = function.child_by_field_name("name")
     is_default = any(c.type == "default" for c in node.children)
     name = "default" if is_default or name_node is None else _text(name_node)
+    return _scan_body(name, function, constants)
+
+
+def _scan_body(name: str, function: Node, constants: dict[str, float]) -> ExecFunction:
     body = function.child_by_field_name("body")
-    return _scan_body(name, function.start_point.row + 1, body.named_children if body else [])
-
-
-def _scan_body(name: str, line: int, statements: list[Node]) -> ExecFunction:
+    statements = body.named_children if body else []
     calls: list[HttpCall] = []
     think_s, reason = 0.0, ""
     for statement in statements:
         try:
-            found = _statement(statement)
+            found = _statement(statement, constants)
         except _NotPlain as err:
             reason = reason or f"line {statement.start_point.row + 1}: {err}"
             continue
@@ -73,10 +108,10 @@ def _scan_body(name: str, line: int, statements: list[Node]) -> ExecFunction:
             calls.append(found)
         elif isinstance(found, float):
             think_s = found
-    return ExecFunction(name, line, tuple(calls), think_s, reason)
+    return ExecFunction(name, function.start_point.row + 1, tuple(calls), think_s, reason)
 
 
-def _statement(statement: Node) -> HttpCall | float | None:
+def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float | None:
     expr = _expression(statement)
     if expr is None or expr.type != "call_expression":
         raise _NotPlain(statement.type if expr is None else f"{_text(expr)} is not a call")
@@ -84,13 +119,19 @@ def _statement(statement: Node) -> HttpCall | float | None:
     args_node = expr.child_by_field_name("arguments")
     args = args_node.named_children if args_node else []
     if callee == "sleep" and args:
-        return float(_literal(args[0]))
+        return _think(args[0], constants)
     if callee == "check":
         return None
     verb = callee.removeprefix("http.")
     if callee.startswith("http.") and verb in _HTTP and args:
         return _http_call(_HTTP[verb], args)
     raise _NotPlain(f"{callee}() is not an HTTP call, check or sleep")
+
+
+def _think(node: Node, constants: dict[str, float]) -> float:
+    if node.type == "identifier" and _text(node) in constants:
+        return constants[_text(node)]
+    return float(_literal(node))
 
 
 def _expression(statement: Node) -> Node | None:
