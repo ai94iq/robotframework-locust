@@ -82,3 +82,18 @@ def test_suite_starts_below_studio(monkeypatch: Any, tmp_path: Path) -> None:
     assert run.process.returncode == 0
     child_nice, child_cwd = (tmp_path / "console.txt").read_text(encoding="utf-8").split()
     assert (int(child_nice), child_cwd) == (min(os.nice(0) + 10, 19), str(tmp_path))
+
+
+# Qt's event loop never runs gevent's, and gevent's waitpid only reports a child that loop reaped,
+# so Studio saw a finished run as running forever.
+def test_exit_seen_without_gevent_loop() -> None:
+    if sys.platform == "win32":
+        pytest.skip("POSIX waitpid path")
+    import ctypes
+
+    libc = ctypes.CDLL(None)
+    process = live._popen([sys.executable, "-c", "pass"])
+    end = time.monotonic() + 10
+    while process.poll() is None and time.monotonic() < end:
+        libc.usleep(100_000)
+    assert process.returncode == 0

@@ -10,6 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from gevent import monkey
+
 from LocustLibrary import feed
 
 _ROBOT_PAGES = {"log.html", "report.html"}
@@ -23,7 +25,14 @@ def _stdlib_popen() -> Any:
     if spec is None or spec.loader is None:
         raise ImportError("standard subprocess module not found")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # The copy binds os.waitpid when it loads. gevent's waitpid reports a child only after
+    # gevent's own loop has reaped it, and Studio runs Qt's loop instead.
+    patched = os.waitpid
+    os.waitpid = monkey.get_original("os", "waitpid")
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        os.waitpid = patched
     return module.Popen
 
 

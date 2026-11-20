@@ -34,9 +34,19 @@ def stats_table() -> QTableWidget:
 
 
 def set_table_colors(table: QTableWidget, colors: dict[str, str]) -> None:
-    """Keep the theme's fail and raised tones on the table for the next fill."""
+    """Keep the theme's fail and raised tones on the table and repaint the rows it holds."""
     table.setProperty("failColor", colors["fail"])
     table.setProperty("raisedColor", colors["raised"])
+    fail, raised = QBrush(QColor(colors["fail"])), QBrush(QColor(colors["raised"]))
+    for r in range(table.rowCount()):
+        for c in range(table.columnCount()):
+            item = table.item(r, c)
+            if item is None:
+                continue
+            if item.font().bold():
+                item.setBackground(raised)
+            if item.foreground().style() != Qt.BrushStyle.NoBrush:
+                item.setForeground(fail)
 
 
 def _cell(key: str, value: Any) -> str:
