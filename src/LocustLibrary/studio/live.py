@@ -110,7 +110,9 @@ def _spawn(command: list[str], cwd: str) -> tuple[list[str], dict[str, Any]]:
     # A load run should never slow the desktop it is watched from.
     if sys.platform == "win32":
         return command, {"cwd": cwd, "creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS}
-    return [sys.executable, "-c", _CHDIR_EXEC, cwd, *command], {}
+    # close_fds=False lets subprocess use posix_spawn. The fork path waits on an exec pipe that a
+    # child forked by another gevent thread can hold open, which hung Python 3.11 forever.
+    return [sys.executable, "-c", _CHDIR_EXEC, cwd, *command], {"close_fds": False}
 
 
 def _lower_priority(pid: int) -> None:
