@@ -123,26 +123,46 @@ Read these before you run a test against a host you do not own.
 
 ## k6 converter
 
-`rflocust-k6` turns a k6 script into a Robot suite for this library. It reads
-the script's options with `k6 inspect`, scans the exported functions for plain
-HTTP calls, and writes three files. A function it cannot convert becomes a
-stub that raises `NotImplementedError` until you port it by hand.
+`rflocust-k6` turns a k6 script into a Robot project for this library. It
+reads the script's options with `k6 inspect`, scans the exported functions
+for plain HTTP calls, and writes a project folder. A function it cannot convert
+becomes a stub that raises `NotImplementedError` until you port it by hand.
 
 Install the extra. The k6 binary must also be on PATH, because `k6 inspect`
 reads the options:
 
 ```
 pip install ".[k6]"
-rflocust-k6 script.js --out dir -e KEY=VALUE --max-users 100
+rflocust-k6 script.js --out robot --env-name dev -e KEY=VALUE --max-users 100
 ```
 
-The command writes `dir/script.robot`, `dir/script_tasks.py` and
-`dir/script.report.md`. The report marks each item as mapped, approximate,
-hand port, clamped, set by hand or unsupported. Run the suite with:
+The project folder has this layout:
 
 ```
-robot --pythonpath dir dir/script.robot
+robot/
+  tests/<name>.robot                          thin suite, one test case
+  collections/<name>_test_keywords.resource   Build, Run and Check keywords
+  resources/resources.resource                entry file every suite imports
+  resources/variables.resource                ENV switch, default dev
+  resources/<env>_variables.resource          HOST and PROXY for one env
+  resources/python/<name>_tasks.py            k6 functions as Python tasks
+  reports/<name>.k6-report.md                 one row per item: status, note
 ```
+
+Run the project from its folder, with the default `--out robot`:
+
+```
+robot -v ENV:dev robot/tests
+```
+
+No `--pythonpath` is needed. Each tasks module is imported as a library, so
+Add Python Task finds it. `resources/resources.resource` is rebuilt on each
+run. `variables.resource` and the environment file are written only when
+missing, so your edits to them survive a rerun.
+
+Scripts with no thresholds get a `Should Have No Failures` check and an
+approximate row in the report. The report marks each item as mapped,
+approximate, hand port, clamped, set by hand or unsupported.
 
 The converter never runs `k6 run` and sends no request. See
 `docs/k6-converter.md` for the mapping table, the limits and how to port a

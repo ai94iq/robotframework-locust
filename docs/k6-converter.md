@@ -1,8 +1,8 @@
 # k6 converter
 
-`rflocust-k6` reads a k6 script and writes a Robot suite, a tasks module and a
-report for LocustLibrary. This page covers how the conversion works, what it
-maps, and what you port by hand.
+`rflocust-k6` reads a k6 script and writes a Robot project for LocustLibrary:
+a thin suite, keyword collections, resources, a tasks module and a report. This
+page covers how the conversion works, what it maps, and what you port by hand.
 
 ## Contents
 
@@ -29,14 +29,21 @@ maps, and what you port by hand.
 The k6 binary must be on PATH. If it is not, the command stops with an error.
 `-e KEY=VALUE` pairs go to `k6 inspect` in sorted order.
 
-The command writes three files. Each name starts with the script's file name
-without its extension, called the stem here:
+The command writes a project folder under `--out` (default `robot`). Each
+file name starts with the script's file name without its extension, called the
+stem here. Paths are relative to the project folder:
 
 | File | Content |
 |---|---|
-| `<stem>.robot` | Suite: user classes, load, checks, one test case |
-| `<stem>_tasks.py` | One function per exec function, run by Add Python Task |
-| `<stem>.report.md` | One row per item: status and note |
+| `tests/<stem>.robot` | Thin suite: one test, `<Title> Load - <Condition> - Thresholds Met`, that calls `Test <Title> Load` |
+| `collections/<stem>_test_keywords.resource` | Build, Run and Check keywords. Threshold endpoints sit in `@{<STEM>_CHECK_<n>_ENDPOINTS}` lists, looped with FOR |
+| `resources/resources.resource` | Entry file every suite imports. Rebuilt on each run: LocustLibrary, every tasks module, every collection |
+| `resources/variables.resource` | `${ENV}`, default `dev`. Written only when missing |
+| `resources/<env>_variables.resource` | `${HOST}` and `${PROXY}` for one environment (`--env-name`, default dev). Written only when missing |
+| `resources/python/<stem>_tasks.py` | One function per exec function, imported as a library so Add Python Task finds it |
+| `reports/<stem>.k6-report.md` | One row per item: status and note |
+
+The condition in the test name describes the load, such as `Ramp To 20 Users`.
 
 ## Mapping table
 
@@ -67,6 +74,8 @@ Notes on the rows:
 - Stage timings come from the first scenario. The report says so when another
   scenario uses different timings.
 - The last `sleep` with a number in an exec function sets the wait time.
+- A script with no thresholds gets `Should Have No Failures` in its Check
+  keyword, and an approximate row in the report.
 - A threshold keyed to an endpoint, such as `http_req_duration{endpoint:login}`,
   uses that endpoint name in the check.
 - k6 writes a percentile as `p(99.9)`. The converter reads it as `p999`. Other
@@ -99,17 +108,19 @@ A plain function becomes calls such as
 `user.client.post(url, json={...}, headers={...}, name=...)`. The `name` is the
 endpoint tag, or the URL when the call has no tag.
 
-To port a function by hand, replace the stub with the calls. Keep the request
+To port a function by hand, replace its stub in
+`resources/python/<stem>_tasks.py` with the calls. Keep the request
 name equal to the k6 endpoint tag. The threshold checks find a stats row by
 that name, so a different name leaves the check with no row to read.
 
 ## Safety
 
-- Users above `--max-users` (default 100, set in `cli.py`) are cut to that
-  number. The report gets a `clamped` row.
-- `Run Load Test` refuses a run whose peak exceeds `${MAX_USERS}`. The suite's
-  Variables table sets it to the `--max-users` value. To change it for one run:
-  `robot --variable MAX_USERS:300 --pythonpath dir dir/script.robot`.
+- Users above `--max-users` (default 100) are cut to that number. The report
+  gets a `clamped` row.
+- `Run Load Test` gets `max_users=<value>` from `--max-users` and refuses a run
+  whose peak exceeds it. To change the ceiling, rerun the converter with a new
+  `--max-users`, or edit the `max_users=` argument in the Run keyword of
+  `collections/<stem>_test_keywords.resource`.
 - The converter sends no request and never runs a k6 load test.
 
 ## Limits
@@ -122,8 +133,8 @@ that name, so a different name leaves the check with no row to read.
   millisecond lower if you need the same result.
 - Only exported functions are scanned. An exec function that is not exported is
   a hand port, and the report says it was not found.
-- The host is the first absolute URL in a plain call. When none is found, the
-  suite uses `http://127.0.0.1` and the report says to set it by hand.
+- The host is the first absolute URL in a plain call. When none is found, `${HOST}` in the
+  environment file is `http://127.0.0.1` and the report says to set it by hand.
 - Generated tasks raise `NotImplementedError` until ported.
 - Arrival-rate and per-VU executors run as looping users, so the count is
   approximate.
@@ -146,11 +157,20 @@ scenario calls a local helper, so each is a hand port:
 | threshold http_req_failed rate | mapped | verify-phone |
 | host | set by hand | no absolute URL found; HOST defaults to http://127.0.0.1 |
 
-The suite holds one user class per scenario and the converted checks:
+The suite is thin. Its one test calls the collection keyword:
 
-```robotframework
+```
 *** Test Cases ***
-Combined Load Test
+Combined Load - Ramp To 20 Users - Thresholds Met
+    [Documentation]    Runs the combined.js profile and passes when every converted check holds.
+    Test Combined Load
+```
+
+The collection holds the steps. The Build keyword has one user class per
+k6 scenario:
+
+```
+Build Combined Users
     Create Load Test    ${HOST}    verify_tls=${False}    proxy=${PROXY}
     Add User Class    otp    weight=6
     Set Wait Time    0s    0s
@@ -161,15 +181,19 @@ Combined Load Test
     Add User Class    token    weight=6
     Set Wait Time    0s    0s
     Add Python Task    tokenScenario    combined_tasks.tokenScenario
+
+Run Combined Load
     Set Load Stages    120s:20    600s:20    60s:0
-    Run Load Test    max_users=${MAX_USERS}
-    Should Meet Response Time    register    p95    1000ms
-    Should Meet Response Time    token    p95    1000ms
-    Should Meet Response Time    verify-phone    p95    1000ms
-    Should Meet Error Rate    1%    endpoint=register
-    Should Meet Error Rate    1%    endpoint=token
-    Should Meet Error Rate    1%    endpoint=verify-phone
+    Run Load Test    max_users=100
+
+Check Combined Load
+    FOR    ${endpoint}    IN    @{COMBINED_CHECK_1_ENDPOINTS}
+        Should Meet Response Time    ${endpoint}    p95    1000ms
+    END
+    FOR    ${endpoint}    IN    @{COMBINED_CHECK_2_ENDPOINTS}
+        Should Meet Error Rate    1%    endpoint=${endpoint}
+    END
 ```
 
-Port the three stubs in `combined_tasks.py`, then run the suite with
-`robot --pythonpath dir dir/combined.robot`.
+Port the three stubs in `resources/python/combined_tasks.py`, then run the
+project from its folder with `robot -v ENV:dev robot/tests`.

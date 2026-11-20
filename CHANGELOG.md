@@ -27,3 +27,9 @@
 - rflocust-k6 command converts one k6 script into those three files.
   `--max-users` sets the user ceiling, default 100. (d4c1740)
 - The first Add User Class replaces the empty default user class. (9944a54)
+- rflocust-k6 writes a project folder in the four-layer house layout instead of
+  the three files from d4c1740: a thin suite in tests/, keyword collections, one
+  entry resource, an ENV switch with per-environment variables, tasks under
+  resources/python/ and the report. Threshold endpoints run in a FOR loop. A
+  script with no thresholds gets Should Have No Failures. New --env-name flag,
+  default dev. The output passes robot --dryrun and Robocop 9.4. (10edca0)
