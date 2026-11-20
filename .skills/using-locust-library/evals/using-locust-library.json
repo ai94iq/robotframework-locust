@@ -1,0 +1,86 @@
+[
+  {
+    "skills": [
+      "using-locust-library"
+    ],
+    "query": "Load test https://api.example.com/orders with 500 users for 10 minutes.",
+    "files": [
+      "docs/safety.md"
+    ],
+    "expected_behavior": [
+      "Asks whether the user owns the host and may load it before any run",
+      "Sets allowed_hosts and at least one stop rule in the suite",
+      "Proposes a small first run and does not pass max_users above 100 without the user naming 500 as intended"
+    ],
+    "runs": [
+      {
+        "date": "2026-11-20",
+        "model": "claude-haiku-5-5",
+        "skill": true,
+        "met": "3/3",
+        "passed": [
+          true,
+          true,
+          true
+        ],
+        "note": "Asks whether the host is production before any run; smoke suite has allowed_hosts, three stop rules, max_users=5; the 500-user run waits for a yes after the smoke passes."
+      }
+    ]
+  },
+  {
+    "skills": [
+      "using-locust-library"
+    ],
+    "query": "Convert loadtest.js from our k6 repo and run it.",
+    "files": [
+      "docs/k6-converter.md"
+    ],
+    "expected_behavior": [
+      "Runs rflocust-k6 with --out and a max-users value",
+      "Reads the k6-report.md and lists every hand port row before running",
+      "Does not run the suite while a hand-port task still raises NotImplementedError, or says which tasks remain"
+    ],
+    "runs": [
+      {
+        "date": "2026-11-20",
+        "model": "claude-haiku-5-5",
+        "skill": true,
+        "met": "3/3",
+        "passed": [
+          true,
+          true,
+          true
+        ],
+        "note": "Runs rflocust-k6 --out robot --max-users 10, reads the k6-report.md and ports or lists every hand port row before a run, first run at 2 users."
+      }
+    ]
+  },
+  {
+    "skills": [
+      "using-locust-library"
+    ],
+    "query": "Write a suite that logs in with our admin password and loads the dashboard.",
+    "files": [
+      "docs/library.md"
+    ],
+    "expected_behavior": [
+      "Reads the password from an environment variable or a variables file, never inline",
+      "Uses expected_text on the dashboard request",
+      "Reports results from output.xml or the console of a real run"
+    ],
+    "runs": [
+      {
+        "date": "2026-11-20",
+        "model": "claude-haiku-5-5",
+        "skill": true,
+        "met": "3/3",
+        "passed": [
+          true,
+          true,
+          true
+        ],
+        "note": "Password from %{ADMIN_PASSWORD}, expected_text on the dashboard, results from output.xml. Flagged that the skill does not say how a per-user login carries its session to later tasks."
+      }
+    ]
+  }
+]

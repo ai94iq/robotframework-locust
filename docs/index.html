@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>robotframework-locust: load tests written as Robot Framework suites</title>
+<meta name="description" content="A Robot Framework library that builds and runs Locust load tests. Write the load as a Robot suite, watch it in Locust Studio, or convert a k6 script.">
+<meta property="og:title" content="robotframework-locust: load tests written as Robot Framework suites">
+<meta property="og:description" content="Write the load as a Robot suite, watch it in Locust Studio, or convert a k6 script. Limits stop a run before it hurts anyone.">
+<meta property="og:type" content="website">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23ffe24a'/%3E%3Cpath d='M4 18 L9 11 L14 11 L17 6 L20 6' fill='none' stroke='%2316181d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/fragment-mono.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Bricolage Grotesque"; src: url(fonts/bricolage-grotesque.woff2) format("woff2"); font-weight: 200 800; font-display: swap; }
+@font-face { font-family: "Fragment Mono"; src: url(fonts/fragment-mono.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+:root {
+  color-scheme: light dark;
+  --page: #ffffff; --ink: #16181d; --mute: #62676f; --line: #e4e5e8; --quiet: #d4d6da; --panel: #f1f2f5;
+  --mark: #ffe24a; --on-mark: #16181d; --band: #15171c; --band-ink: #eceef0; --band-mute: #a2a7af;
+  --sans: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Fragment Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --page: #15171c; --ink: #eceef0; --mute: #a2a7af; --line: #2c2f36; --quiet: #41454e; --panel: #23262d; --band: #0e0f12; }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; scrollbar-color: var(--quiet) var(--page); }
+body { margin: 0; background: var(--page); color: var(--ink); font: 400 18px/1.55 var(--sans); }
+::selection { background: var(--mark); color: var(--on-mark); }
+a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+h1, h2, h3, p, figure, pre, ul, dl, dd { margin: 0; }
+code, pre { font-family: var(--mono); }
+code { font-size: .86em; }
+pre { font-size: 13.5px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre .ln { display: block; padding-left: 6ch; text-indent: -6ch; }
+.wrap { width: min(1160px, 100% - 48px); margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+.hl { padding: .02em .2em; margin: 0; border-radius: .1em .24em .16em .12em; background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 62% / 100% var(--mh, 100%); color: var(--on-mark); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+header.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 24px; padding: 22px 0; }
+.brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; text-decoration: none; }
+.brand svg { width: 24px; height: 24px; flex: none; }
+nav { display: flex; flex-wrap: wrap; gap: 0 22px; font-size: 16px; }
+nav a { padding: 6px 0; text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+.hero { padding: 48px 0 40px; }
+h1 { font-size: clamp(46px, 6.3vw, 84px); font-weight: 800; line-height: 1.08; letter-spacing: -.015em; max-width: 14em; text-wrap: balance; }
+h1 .hl { --mh: 80%; padding: 0 .12em; }
+.lede { margin-top: 24px; font-size: 21px; line-height: 1.45; max-width: 34em; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 16px; border: 1.5px solid var(--ink); border-radius: 8px; background: none; color: var(--ink); font: 600 16px/1.2 var(--sans); text-decoration: none; cursor: pointer; }
+.btn.copy { background: var(--ink); color: var(--page); font: 400 14px/1.2 var(--mono); }
+.btn:hover { background: var(--mark); border-color: var(--mark); color: var(--on-mark); }
+.copied { min-height: 26px; margin-top: 8px; font-size: 16px; color: var(--mute); }
+.doors { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; padding: 8px 0 80px; }
+.door { min-width: 0; }
+.door h3 { font-size: 22px; font-weight: 700; }
+.door p { margin: 6px 0 16px; color: var(--mute); font-size: 16px; }
+.door pre { font-size: 12px; line-height: 19px; color: var(--mute); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.door pre b { color: var(--ink); font-weight: 400; }
+.door img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; }
+.door .cmd { margin-top: 12px; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; font: 13px/1.6 var(--mono); overflow-wrap: anywhere; }
+section { padding: 72px 0; border-top: 1px solid var(--line); }
+h2 { font-size: clamp(32px, 4.2vw, 52px); font-weight: 800; line-height: 1.1; letter-spacing: -.02em; max-width: 18em; text-wrap: balance; }
+.sub { margin-top: 16px; max-width: 40em; color: var(--mute); }
+.convert { display: grid; grid-template-columns: minmax(0, .9fr) auto minmax(0, 1.1fr); gap: 0 20px; margin-top: 36px; align-items: stretch; }
+.convert > * { min-width: 0; }
+.pane { border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; background: var(--panel); }
+.pane.out { border: 1.5px solid var(--ink); }
+.fname { font: 13.5px var(--mono); color: var(--mute); margin-bottom: 12px; overflow-wrap: anywhere; }
+.arrow { display: grid; place-items: center; align-content: center; gap: 6px; font: 13px var(--mono); color: var(--mute); }
+.arrow svg { width: 44px; height: 18px; color: var(--ink); }
+.table-wrap { overflow-x: auto; margin-top: 32px; }
+table { border-collapse: collapse; width: 100%; font-size: 16px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 24px 9px 0; border-bottom: 1px solid var(--line); }
+th { color: var(--mute); font-weight: 400; }
+td code { font-size: 14px; white-space: nowrap; }
+.tag { font: 12.5px var(--mono); padding: 2px 7px; border-radius: 4px; background: var(--line); white-space: nowrap; }
+.tag.y { background: var(--mark); color: var(--on-mark); }
+.band { background: var(--band); color: var(--band-ink); border-top: 0; }
+.band .sub, .band p { color: var(--band-mute); }
+.band .hl { color: var(--on-mark); }
+.studio { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 40px; margin-top: 36px; align-items: start; }
+.studio > * { min-width: 0; }
+.studio img { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid #2c2f36; }
+.studio .side { display: grid; gap: 22px; font-size: 16px; }
+figcaption { margin-top: 8px; font-size: 15px; color: var(--mute); }
+.band figcaption { color: var(--band-mute); }
+footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 40px; padding: 40px 0 64px; border-top: 1px solid var(--line); color: var(--mute); font-size: 16px; }
+.links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; margin: 32px 0 0; padding: 0; list-style: none; }
+.links li { display: grid; gap: 2px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.links a { font-size: 20px; font-weight: 700; text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+.links span { color: var(--mute); font-size: 16px; }
+.door img, .studio img { cursor: zoom-in; }
+dialog.zoom { max-width: 96vw; max-height: 96vh; padding: 0; border: 0; border-radius: 8px; background: none; overflow: visible; }
+dialog.zoom::backdrop { background: rgb(10 11 14 / .86); }
+dialog.zoom:focus, dialog.zoom:focus-visible { outline: none; }
+dialog.zoom img { display: block; max-width: 96vw; max-height: calc(96vh - 40px); width: auto; height: auto; border-radius: 8px; cursor: zoom-out; }
+dialog.zoom p { margin-top: 8px; color: #eceef0; font-size: 15px; text-align: center; }
+@media (max-width: 960px) {
+  .links { grid-template-columns: minmax(0, 1fr); }
+  .doors, .studio { grid-template-columns: minmax(0, 1fr); }
+  .convert { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .arrow svg { transform: rotate(90deg); }
+}
+@media (max-width: 560px) {
+  .wrap { width: calc(100% - 32px); }
+  .btn.copy { font-size: 12.5px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <a class="brand" href="#top"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="5" fill="#ffe24a"/><path d="M4 18 L9 11 L14 11 L17 6 L20 6" fill="none" stroke="#16181d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>robotframework-locust</a>
+  <nav aria-label="Sections">
+    <a href="#k6">From k6</a>
+    <a href="#studio">Studio</a>
+    <a href="#more">Limits</a>
+    <a href="keywords.html">Keywords</a>
+    <a href="https://github.com/ai94iq/robotframework-locust">GitHub</a>
+  </nav>
+</header>
+</div>
+
+<main id="top">
+<div class="wrap">
+  <div class="hero">
+    <h1>Load tests you write <span class="hl">as Robot suites.</span></h1>
+    <p class="lede">A Robot Framework library that builds and runs Locust. Write the load in keywords, watch it in Locust Studio, or bring a k6 script you already have.</p>
+    <div class="actions">
+      <button class="btn copy" type="button" data-copy="pip install robotframework-locust">pip install robotframework-locust</button>
+      <a class="btn" href="keywords.html">Keyword reference</a>
+    </div>
+    <p class="copied" role="status" aria-live="polite"></p>
+  </div>
+  <div class="doors">
+    <div class="door">
+      <h3>Write it in Robot</h3>
+      <p>Build users, run them headless, check the stats.</p>
+<pre><span class="ln">*** Settings ***</span><span class="ln">Library    LocustLibrary</span><span class="ln"> </span><span class="ln">*** Test Cases ***</span><span class="ln">Shop Under Load</span><span class="ln">    <b>Create Load Test</b>    http://127.0.0.1:8765</span><span class="ln">    ...    allowed_hosts=127.0.0.1</span><span class="ln">    <b>Add Stop Rule</b>    p95 &gt; 2s for 10s</span><span class="ln">    <b>Add User Class</b>    Browser    weight=3</span><span class="ln">    Set Wait Time    0.2s    0.6s</span><span class="ln">    Add Get Request    items</span><span class="ln">    ...    /items.json</span><span class="ln">    ...    expected_text=sku</span><span class="ln">    <b>Add User Class</b>    Checker    weight=1</span><span class="ln">    <b>Set Pacing</b>    1s</span><span class="ln">    Add Get Request    health</span><span class="ln">    ...    /health.txt</span><span class="ln">    <b>Set Load Stages</b>    10s:10    20s:20</span><span class="ln">    ...    5s:0</span><span class="ln">    <b>Run Load Test</b>    max_users=50</span><span class="ln">    <b>Should Meet Response Time</b>    aggregated</span><span class="ln">    ...    p95    500ms</span><span class="ln">    Export Report    shop</span></pre>
+      <div class="cmd">robot shop_load.robot</div>
+    </div>
+    <div class="door">
+      <h3>Watch it run</h3>
+      <p>Open a suite in Locust Studio and press Run. The table and charts update every second.</p>
+      <img src="screenshots/studio-run.png" width="1440" height="900" alt="Locust Studio after a 20-user run: the stats table for three requests with no failures, and charts for requests per second, response times and users.">
+      <div class="cmd">pip install "robotframework-locust[studio]"<br>locust-studio</div>
+    </div>
+    <div class="door">
+      <h3>Bring your k6 script</h3>
+      <p>Stages, thresholds and plain requests become keywords.</p>
+<pre><span class="ln">export const options = {</span><span class="ln">  stages: [</span><span class="ln">    { duration: '30s', target: 20 },</span><span class="ln">    { duration: '1m', target: 20 },</span><span class="ln">    { duration: '10s', target: 0 },</span><span class="ln">  ],</span><span class="ln">  thresholds: {</span><span class="ln">    http_req_duration: ['p(95)&lt;500'],</span><span class="ln">    http_req_failed: ['rate&lt;0.01'],</span><span class="ln">  },</span><span class="ln">};</span></pre>
+      <div class="cmd">pip install "robotframework-locust[k6]"<br>rflocust-k6 checkout.js</div>
+    </div>
+  </div>
+</div>
+
+<section id="k6" aria-labelledby="h-k6">
+<div class="wrap">
+  <h2 id="h-k6">Your k6 script, <span class="hl">as a Robot suite.</span></h2>
+  <p class="sub">rflocust-k6 reads the options with <code>k6 inspect</code>, scans the exported functions for plain HTTP calls, and writes a Robot project. This is its real output for the script on the left.</p>
+  <div class="convert">
+    <div class="pane"><div class="fname">checkout.js</div>
+<pre><span class="ln">import http from 'k6/http';</span><span class="ln">import { sleep } from 'k6';</span><span class="ln"> </span><span class="ln">export const options = {</span><span class="ln">  stages: [</span><span class="ln">    { duration: '30s', target: 20 },</span><span class="ln">    { duration: '1m', target: 20 },</span><span class="ln">    { duration: '10s', target: 0 },</span><span class="ln">  ],</span><span class="ln">  thresholds: {</span><span class="ln">    http_req_duration: ['p(95)&lt;500'],</span><span class="ln">    http_req_failed: ['rate&lt;0.01'],</span><span class="ln">  },</span><span class="ln">};</span><span class="ln"> </span><span class="ln">export default function () {</span><span class="ln">  http.get('http://127.0.0.1:8765/items.json');</span><span class="ln">  sleep(1);</span><span class="ln">}</span></pre></div>
+    <div class="arrow" aria-hidden="true"><span>rflocust-k6</span><svg viewBox="0 0 44 18"><path d="M0 9 H40 M33 3 L41 9 L33 15" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+    <div class="pane out"><div class="fname">robot/collections/checkout_test_keywords.resource</div>
+<pre><span class="ln">Test Checkout Load</span><span class="ln">    [Documentation]    Builds the users, runs the load, then checks it.</span><span class="ln">    Build Checkout Users</span><span class="ln">    Run Checkout Load</span><span class="ln">    Check Checkout Load</span><span class="ln"> </span><span class="ln">Build Checkout Users</span><span class="ln">    [Documentation]    One user class per k6 scenario, weighted by its peak users.</span><span class="ln">    Create Load Test    ${HOST}    verify_tls=${True}    proxy=${PROXY}</span><span class="ln">    Add User Class    default    weight=20</span><span class="ln">    Set Wait Time    1s    1s</span><span class="ln">    Add Python Task    default    checkout_tasks.default</span><span class="ln"> </span><span class="ln">Run Checkout Load</span><span class="ln">    [Documentation]    Runs the converted k6 load profile headless.</span><span class="ln">    Set Load Stages    30s:20    60s:20    10s:0</span><span class="ln">    Run Load Test    max_users=100</span><span class="ln">    Export Report    checkout</span><span class="ln"> </span><span class="ln">Check Checkout Load</span><span class="ln">    [Documentation]    The converted k6 thresholds.</span><span class="ln">    Should Meet Response Time    aggregated    p95    500ms</span><span class="ln">    Should Meet Error Rate    1%</span></pre></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th scope="col">k6</th><th scope="col">LocustLibrary</th><th scope="col">Report</th></tr></thead>
+      <tbody>
+        <tr><td><code>ramping-vus</code> stages</td><td>Set Load Stages</td><td><span class="tag y">mapped</span></td></tr>
+        <tr><td><code>constant-vus</code>, <code>shared-iterations</code></td><td>Run Load Test with users, run time and iterations</td><td><span class="tag y">mapped</span></td></tr>
+        <tr><td><code>http_req_duration</code> p50 to p99.9</td><td>Should Meet Response Time</td><td><span class="tag y">mapped</span></td></tr>
+        <tr><td><code>http_req_failed</code> rate</td><td>Should Meet Error Rate</td><td><span class="tag y">mapped</span></td></tr>
+        <tr><td>arrival-rate executors</td><td>Run Load Test with looping users</td><td><span class="tag">approximate</span></td></tr>
+        <tr><td>a call the scanner cannot read</td><td>a Python task that raises until you port it</td><td><span class="tag">hand port</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub">The converter never runs <code>k6 run</code>. <code>k6 inspect</code> runs the script's init code as you, so convert only scripts you trust. <a href="https://github.com/ai94iq/robotframework-locust/blob/main/docs/k6-converter.md">The full mapping</a>.</p>
+</div>
+</section>
+
+<section class="band" id="studio" aria-labelledby="h-studio">
+<div class="wrap">
+  <h2 id="h-studio">Run the suite. <span class="hl">Watch it.</span></h2>
+  <p class="sub">Locust Studio opens a suite, runs it under Robot at low priority, and charts it every second.</p>
+  <div class="studio">
+    <figure>
+      <img src="screenshots/studio-run-graphite.png" width="1440" height="900" loading="lazy" alt="Locust Studio in the dark Graphite theme, 18 seconds into a run: the stats table fills while the requests and users charts climb.">
+      <figcaption>18 seconds into a 20-user run.</figcaption>
+    </figure>
+    <div class="side">
+      <p>Studio reads the suite with a Robot dry run, so nothing is sent until you press Run. The sidebar lists each user class, its pacing and the stop rules.</p>
+      <p>When the run ends, the Report tab opens the Robot log and the Locust HTML report. Studio has a dark and a light theme, and runs on Windows and Linux.</p>
+      <figure>
+        <img src="screenshots/studio-report.png" width="1440" height="900" loading="lazy" alt="The Report tab in the light Paper theme: the request count with no failures, and buttons that open the Robot log and the Locust report.">
+        <figcaption>The Report tab, light theme.</figcaption>
+      </figure>
+    </div>
+  </div>
+</div>
+</section>
+
+<section id="more" aria-labelledby="h-more">
+<div class="wrap">
+  <h2 id="h-more">It stops <span class="hl">before it hurts anyone.</span></h2>
+  <p class="sub">A user ceiling, a host allowlist, stop rules and a failure breaker keep a run in bounds. Read the limits before you point a run at a host you do not own.</p>
+  <ul class="links">
+    <li><a href="https://github.com/ai94iq/robotframework-locust/blob/main/docs/safety.md">Safety limits</a><span>Every limit and how to set it</span></li>
+    <li><a href="keywords.html">Keyword reference</a><span>All 28 keywords, with arguments</span></li>
+    <li><a href="https://github.com/ai94iq/robotframework-locust/blob/main/docs/library.md">Library guide</a><span>User classes, Python tasks, shared data, reports</span></li>
+    <li><a href="https://github.com/ai94iq/robotframework-locust/blob/main/CONTRIBUTING.md">Contributing</a><span>Setup, checks and the rules a change keeps</span></li>
+  </ul>
+</div>
+</section>
+</main>
+
+<div class="wrap">
+<footer>
+  <span>robotframework-locust 1.0.0. MIT license. Built on <a href="https://locust.io">Locust</a> and <a href="https://robotframework.org">Robot Framework</a>.</span>
+  <span><a href="https://github.com/ai94iq/robotframework-locust">Source</a> &middot; <a href="https://github.com/ai94iq/robotframework-locust/blob/main/CHANGELOG.md">Changelog</a> &middot; <a href="https://github.com/ai94iq/robotframework-locust/blob/main/CONTRIBUTING.md">Contributing</a></span>
+</footer>
+</div>
+<dialog class="zoom" aria-label="Screenshot"><img src="screenshots/studio-run.png" alt="" width="1440" height="900"><p></p></dialog>
+<script>
+(function () {
+  var dlg = document.querySelector('dialog.zoom'), big = dlg.querySelector('img'), cap = dlg.querySelector('p');
+  document.querySelectorAll('.door img, .studio img').forEach(function (img) {
+    img.tabIndex = 0;
+    img.setAttribute('role', 'button');
+    function open() { big.src = img.src; big.alt = img.alt; cap.textContent = 'Click or press Esc to close.'; dlg.showModal(); }
+    img.addEventListener('click', open);
+    img.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  });
+  dlg.addEventListener('click', function () { dlg.close(); });
+})();
+document.querySelectorAll('[data-copy]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var status = document.querySelector('.copied');
+    navigator.clipboard.writeText(b.dataset.copy).then(function () { status.textContent = 'Copied: ' + b.dataset.copy; },
+      function () { status.textContent = 'Copy failed. Select the command and copy it by hand.'; });
+  });
+});
+</script>
+</body>
+</html>

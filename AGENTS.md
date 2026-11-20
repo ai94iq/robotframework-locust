@@ -8,4 +8,6 @@ Read these before changing code:
 - `.skills/checking-locust-library/SKILL.md`
 - `.skills/changing-locust-library/SKILL.md`
 
+To write or run a load suite with the library: `.skills/using-locust-library/SKILL.md`.
+
 `evals/hooks/mr_guard.py` is the check an external merge request must pass.

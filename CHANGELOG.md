@@ -1,7 +1,25 @@
 # Changelog
 
-## 0.1.0 (2026-11-20)
+## 1.0.0 (2026-11-20)
 
+The first release.
+
+- Locust Studio on Linux now sees a run end. Importing Locust swaps in
+  gevent's waitpid, which reports a finished child only after gevent's own
+  loop has reaped it. Studio runs Qt's loop instead, so the run stayed
+  "Running" forever and the Report tab stayed empty. Studio now starts Robot
+  with the standard waitpid.
+- The Aggregated row of the Studio stats table keeps its colours when you
+  switch theme. After a switch from Graphite to Paper it kept the dark row
+  colour, and its text could not be read.
+- The README is shorter and points to new pages in `docs/`: `library.md`,
+  `safety.md`, `studio.md` and `cli.md`, with Studio screenshots from a
+  real run. `docs/index.html` is a project page for GitHub Pages, and
+  `docs/keywords.html` is the keyword reference that libdoc builds.
+- `CONTRIBUTING.md` lists the setup, the checks and the rules a change must
+  keep.
+- `.skills/using-locust-library` tells a coding agent how to write, run and
+  check a load suite, with the safety limits first.
 - The Locust Studio sidebar lists a suite's stop rules under the host and shows
   pacing on each user class. Class details sit on a second line, so the narrow
   sidebar no longer cuts them off.
