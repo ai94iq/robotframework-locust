@@ -206,11 +206,12 @@ class LocustLibrary:
     @keyword
     def run_load_test(self, users: int = 10, spawn_rate: float = 1.0,
                       run_time: str = "30s", csv_prefix: str = "locust",
-                      iterations: int = 0) -> None:
+                      iterations: int = 0, max_users: int = 100) -> None:
         """Run the configured load test headless.
 
         `iterations` stops every user after that many task runs in total, within `run_time`.
         Stages from Set Load Stages replace `users`, `spawn_rate` and `run_time`.
+        A run that would start more than `max_users` users is refused before it starts.
         """
         if self._scenario is None or self._config is None:
             raise RuntimeError("Call Create Load Test first.")
@@ -218,11 +219,18 @@ class LocustLibrary:
         self._config.spawn_rate = spawn_rate
         self._config.run_time = run_time
         self._config.iterations = iterations
+        self._check_ceiling(self._config, max_users)
         from .validation import sanitize_prefix
 
         self._config.csv_prefix = sanitize_prefix(csv_prefix)
         self._stats = run_load_test(self._scenarios, self._config)
         logger.info(f"Load test finished: {self._stats}")
+
+    def _check_ceiling(self, config: RunConfig, max_users: int) -> None:
+        peak = max((s.users for s in config.stages), default=config.users)
+        peak = max(peak, sum(s.fixed_count for s in self._scenarios))
+        if peak > max_users:
+            raise ValueError(f"{peak} users is over max_users={max_users}; raise it on purpose")
 
     @keyword
     def get_locust_stats(self) -> dict[str, object]:
