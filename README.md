@@ -155,8 +155,8 @@ Run the project from its folder, with the default `--out robot`:
 robot -v ENV:dev robot/tests
 ```
 
-No `--pythonpath` is needed. Each tasks module is imported as a library, so
-Add Python Task finds it. `resources/resources.resource` is rebuilt on each
+No `--pythonpath` is needed. The entry resource imports LocustLibrary with
+`python_path=${CURDIR}/python`, so Add Python Task finds the tasks modules. `resources/resources.resource` is rebuilt on each
 run. `variables.resource` and the environment file are written only when
 missing, so your edits to them survive a rerun.
 

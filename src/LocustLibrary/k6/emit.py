@@ -231,9 +231,7 @@ def entry_point(collections: list[str]) -> str:
     """resources/resources.resource: the one file every suite and collection imports."""
     lines = ["*** Settings ***",
              "Documentation       Single entry point. Every suite and collection imports this file only.",
-             "Library             LocustLibrary",
-             *(f"Library             python/{PurePath(c).stem.removesuffix('_test_keywords')}_tasks.py"
-               for c in collections),
+             "Library             LocustLibrary    python_path=${CURDIR}/python",
              "Resource            variables.resource",
              "Resource            ${ENV}_variables.resource",
              *(f"Resource            ../collections/{c}" for c in collections)]
@@ -262,8 +260,7 @@ def env_variables(env: str, host: str) -> str:
 
 def _tasks_module(script: str, wanted: list[tuple[str, ExecFunction | None]]) -> str:
     parts = [f'"""Tasks converted from {script}. Each function gets the Locust user."""',
-             "", "from typing import Any", "", "# Imported as a library only so Add Python Task can find it.",
-             "ROBOT_AUTO_KEYWORDS = False"]
+             "", "from typing import Any"]
     for name, fn in wanted:
         parts += ["", "", f"def {name}(user: Any) -> None:", *_function_body(script, name, fn)]
     return "\n".join(parts) + "\n"

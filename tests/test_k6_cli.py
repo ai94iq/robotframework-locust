@@ -48,7 +48,9 @@ def test_env_file_is_kept_and_entry_lists_every_collection(monkeypatch, tmp_path
         cli.main([str(script), "--out", str(out)])
     entry = (out / "resources/resources.resource").read_text(encoding="utf-8")
     assert "../collections/smoke_test_keywords.resource" in entry
-    assert "Library             python/token_tasks.py" in entry
+    assert "../collections/token_test_keywords.resource" in entry
+    assert "LocustLibrary    python_path=${CURDIR}/python" in entry
+    assert "_tasks.py" not in entry
     assert (out / "resources/dev_variables.resource").read_text(encoding="utf-8") == "hand edited"
 
 

@@ -37,10 +37,10 @@ stem here. Paths are relative to the project folder:
 |---|---|
 | `tests/<stem>.robot` | Thin suite: one test, `<Title> Load - <Condition> - Thresholds Met`, that calls `Test <Title> Load` |
 | `collections/<stem>_test_keywords.resource` | Build, Run and Check keywords. Threshold endpoints sit in `@{<STEM>_CHECK_<n>_ENDPOINTS}` lists, looped with FOR |
-| `resources/resources.resource` | Entry file every suite imports. Rebuilt on each run: LocustLibrary, every tasks module, every collection |
+| `resources/resources.resource` | Entry file every suite imports. Rebuilt on each run: LocustLibrary with `python_path` set to `resources/python`, then every collection |
 | `resources/variables.resource` | `${ENV}`, default `dev`. Written only when missing |
 | `resources/<env>_variables.resource` | `${HOST}` and `${PROXY}` for one environment (`--env-name`, default dev). Written only when missing |
-| `resources/python/<stem>_tasks.py` | One function per exec function, imported as a library so Add Python Task finds it |
+| `resources/python/<stem>_tasks.py` | One function per exec function. Add Python Task finds it through `python_path` |
 | `reports/<stem>.k6-report.md` | One row per item: status and note |
 
 The condition in the test name describes the load, such as `Ramp To 20 Users`.

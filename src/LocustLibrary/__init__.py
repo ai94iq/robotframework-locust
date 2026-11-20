@@ -2,6 +2,7 @@
 
 import importlib
 import subprocess
+import sys
 from collections.abc import Callable
 from typing import Any, cast
 
@@ -86,7 +87,10 @@ class LocustLibrary:
 
     ROBOT_LIBRARY_SCOPE = "SUITE"
 
-    def __init__(self) -> None:
+    def __init__(self, python_path: str = "") -> None:
+        """`python_path` is a folder searched for the modules Add Python Task names."""
+        if python_path and python_path not in sys.path:
+            sys.path.insert(0, python_path)
         self._scenario: Scenario | None = None
         self._scenarios: list[Scenario] = []
         self._default: Scenario | None = None

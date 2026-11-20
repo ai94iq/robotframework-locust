@@ -33,3 +33,7 @@
   resources/python/ and the report. Threshold endpoints run in a FOR loop. A
   script with no thresholds gets Should Have No Failures. New --env-name flag,
   default dev. The output passes robot --dryrun and Robocop 9.4. (10edca0)
+- LocustLibrary takes a `python_path` import argument, a folder searched for
+  Add Python Task modules. The k6 entry resource uses it instead of importing
+  each tasks module as a library, which logged a "contains no keywords" warning
+  per module.
