@@ -22,3 +22,13 @@ def test_rows_carry_failures_per_second() -> None:
     (row,) = _stats_from_env(types.SimpleNamespace(stats=stats)).rows
     assert row.failures_s == stats.get("login", "POST").total_fail_per_sec
     assert row.failures_s > 0
+
+
+# The live feed reads stats every second, from before the first request lands.
+def test_stats_before_any_request() -> None:
+    stats = RequestStats()
+    stats.get("login", "POST")
+    read = _stats_from_env(types.SimpleNamespace(stats=stats))
+    total = read.aggregated
+    assert total is not None
+    assert (read.rows[0].min, total.min, total.request_count) == (0.0, 0.0, 0)

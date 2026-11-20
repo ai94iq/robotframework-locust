@@ -56,7 +56,8 @@ def _row_from_entry(name: str, entry: object) -> StatsRow:
         failure_count=int(getattr(entry, "num_failures", 0)),
         median=float(getattr(entry, "median_response_time", 0.0)),
         average=float(getattr(entry, "avg_response_time", 0.0)),
-        min=float(getattr(entry, "min_response_time", 0.0)),
+        # Locust keeps no minimum until the first request lands.
+        min=float(getattr(entry, "min_response_time", 0.0) or 0.0),
         max=float(getattr(entry, "max_response_time", 0.0)),
         rps=float(getattr(entry, "total_rps", 0.0)),
         failures_s=float(getattr(entry, "total_fail_per_sec", 0.0)),
