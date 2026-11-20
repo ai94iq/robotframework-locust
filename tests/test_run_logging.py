@@ -37,10 +37,12 @@ def test_table_uses_locust_columns() -> None:
     assert ">207</td>" in table and ">1100</td>" in table and ">0.44</td>" in table
 
 
-def test_failures_show_red_and_total_row_bold() -> None:
+def test_table_matches_the_locust_report_look() -> None:
     table = stats_table_html(_stats())
+    assert "background:#fff" in table and "border-bottom:1px solid #e0e0e0" in table
+    assert "font-weight:500" in table and "padding:16px" in table
     assert 'color:#f64e56">1</td>' in table
-    assert 'font-weight:bold' in table.split("Aggregated")[0].rsplit("<tr", 1)[1]
+    assert "#121212" not in table and "bold" not in table
 
 
 def test_run_logs_table_calls_and_tls(monkeypatch: pytest.MonkeyPatch) -> None:

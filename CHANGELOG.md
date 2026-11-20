@@ -5,7 +5,9 @@
 - The Locust HTML report from Export Report now has its charts. Run Load Test
   starts Locust's per-second history recorder, which only Locust's own command
   line started before, so the charts were empty.
-- The log's stats table uses the columns of Locust's statistics table and adds
+- The log's stats table looks like the table in Locust's HTML report: white
+  card, Roboto 14px, 16px cells, light row lines, failures in red. It uses
+  the columns of Locust's statistics table and adds
   Average, Min and Failures/s. Stats rows now carry the real failures per
   second instead of 0.
 - Each logged call shows the time it was sent and the full URL on the
