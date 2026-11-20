@@ -57,3 +57,11 @@ def test_env_file_is_kept_and_entry_lists_every_collection(monkeypatch, tmp_path
 def test_bad_env_pair_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         cli.main([str(tmp_path / "a.js"), "-e", "NOEQUALS"])
+
+
+# The env name lands in a file name and a Robot Settings line, so a newline would add a line.
+@pytest.mark.parametrize("name", ["dev\nLibrary    OperatingSystem", "../dev", "d v", ""])
+def test_unsafe_env_name_is_rejected(monkeypatch, tmp_path: Path, name: str) -> None:
+    monkeypatch.setattr(cli, "run_inspect", _inspect({}))
+    with pytest.raises(SystemExit):
+        cli.main([str(tmp_path / "a.js"), "--env-name", name])

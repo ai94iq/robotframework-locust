@@ -10,6 +10,9 @@
 - The k6 emitter is split by job: `emit.py` (convert and host), `profile.py`
   (scenarios and thresholds to keyword lines) and `robot_files.py` (suite,
   resources and tasks text). Converter output is unchanged.
+- `rflocust-k6 --env-name` accepts only letters, digits, `_`, `.` and `-`.
+  The name becomes a file name and a Robot Settings line, so a newline could
+  add a line to the environment file.
 - Create Load Test takes `allowed_hosts`, or reads
   `LOCUSTLIBRARY_ALLOWED_HOSTS`, and refuses a host that is not on the list.
   With no list, it logs a warning and goes on.

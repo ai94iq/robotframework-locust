@@ -7,11 +7,21 @@ collections present, and an environment file is written only when it does not ex
 """
 
 import argparse
+import re
 from pathlib import Path
 
 from .emit import VARIABLES, convert, entry_point, env_variables
 from .options import parse_options, run_inspect
 from .scan import scan_source
+
+# The env name becomes a file name and a Robot Settings line.
+_ENV_NAME = re.compile(r"[A-Za-z0-9_.-]+", re.ASCII)
+
+
+def _env_name(text: str) -> str:
+    if not _ENV_NAME.fullmatch(text):
+        raise argparse.ArgumentTypeError(f"use letters, digits, _ . or -, got {text!r}")
+    return text
 
 
 def _env_pair(text: str) -> tuple[str, str]:
@@ -28,7 +38,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("-e", dest="env", type=_env_pair, action="append", default=[],
                         help="k6 -e KEY=VALUE passed to k6 inspect")
     parser.add_argument("--max-users", type=int, default=100, help="user ceiling, default 100")
-    parser.add_argument("--env-name", default="dev", help="environment file to create, default dev")
+    parser.add_argument("--env-name", type=_env_name, default="dev", help="environment file to create, default dev")
     return parser
 
 
