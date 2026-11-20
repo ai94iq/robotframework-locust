@@ -42,6 +42,16 @@ def test_tasks_before_a_class_go_to_the_default(tmp_path: Path) -> None:
     assert plan.classes[0].tasks == ["Add Python Task: signupScenario"]
 
 
+def test_pacing_and_stop_rules_are_listed(tmp_path: Path) -> None:
+    suite = tmp_path / "paced.robot"
+    suite.write_text(SUITE.replace("    Set Wait Time    5s    5s\n",
+                                   "    Set Pacing    2s\n    Add Stop Rule    p95 > 1s for 10s\n"),
+                     encoding="utf-8")
+    plan = read_suite(str(suite))
+    assert (plan.classes[0].pacing, plan.classes[0].wait) == ("2s", "")
+    assert plan.stop_rules == ["p95 > 1s for 10s"]
+
+
 def test_host_from_a_resource_is_resolved(tmp_path: Path) -> None:
     (tmp_path / "vars.resource").write_text(
         "*** Variables ***\n${HOST}    http://127.0.0.1:9\n", encoding="utf-8")

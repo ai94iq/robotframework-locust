@@ -20,6 +20,7 @@ class PlannedClass:
     name: str
     size: str = ""
     wait: str = ""
+    pacing: str = ""
     tasks: list[str] = field(default_factory=list)
 
 
@@ -27,6 +28,7 @@ class PlannedClass:
 class SuitePlan:
     host: str = ""
     classes: list[PlannedClass] = field(default_factory=list)
+    stop_rules: list[str] = field(default_factory=list)
 
     def add(self, keyword: str, args: tuple[str, ...]) -> None:
         if keyword == "Create Load Test":
@@ -35,6 +37,10 @@ class SuitePlan:
             self.classes.append(PlannedClass(args[0], " ".join(args[1:])))
         elif keyword == "Set Wait Time":
             self._current().wait = " - ".join(args)
+        elif keyword == "Set Pacing":
+            self._current().pacing = args[0]
+        elif keyword == "Add Stop Rule":
+            self.stop_rules.append(args[0])
         elif keyword in _TASKS:
             self._current().tasks.append(f"{keyword}: {args[0]}")
 

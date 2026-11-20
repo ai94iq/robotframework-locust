@@ -57,12 +57,15 @@ class Sidebar(QWidget):  # type: ignore[misc]
         finally:
             QApplication.restoreOverrideCursor()
         self._classes = plan.classes
-        self.suite_label.setText(f"{Path(path).name}\nHost: {plan.host or 'not set'}")
+        rules = "".join(f"\nStop when {rule}" for rule in plan.stop_rules)
+        self.suite_label.setText(f"{Path(path).name}\nHost: {plan.host or 'not set'}{rules}")
         self.suite_label.setToolTip(path)
         self.class_list.clear()
         for planned in plan.classes:
-            detail = "  ".join(x for x in (planned.size, planned.wait and f"wait {planned.wait}") if x)
-            self.class_list.addItem(f"{planned.name}  {detail}".strip())
+            detail = "  ".join(x for x in (planned.size, planned.wait and f"wait {planned.wait}",
+                                           planned.pacing and f"pacing {planned.pacing}") if x)
+            # The sidebar is narrow; details on their own line stay readable instead of cut.
+            self.class_list.addItem(f"{planned.name}\n{detail}".strip())
         if plan.classes:
             self.class_list.setCurrentRow(0)
         self.suite_opened.emit(path)

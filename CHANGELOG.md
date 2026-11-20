@@ -2,6 +2,9 @@
 
 ## 0.1.0 (unreleased)
 
+- The Locust Studio sidebar lists a suite's stop rules under the host and shows
+  pacing on each user class. Class details sit on a second line, so the narrow
+  sidebar no longer cuts them off.
 - New keywords Put Shared Value and Take Shared Value let one step hand data it
   created to another step during a run, first in first out per name, like the
   rfswarm TestDataTable. Take waits up to a timeout and then fails the task.
