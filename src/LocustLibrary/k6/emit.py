@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import PurePath
 from urllib.parse import urlsplit
 
+from robot.utils import escape
+
 from .options import K6Options, K6Scenario, Threshold
 from .scan import ExecFunction, HttpCall
 
@@ -263,9 +265,9 @@ def env_variables(env: str, host: str) -> str:
     """resources/<env>_variables.resource with the host the scripts call."""
     return "\n".join([
         "*** Settings ***",
-        f"Documentation       Values for the {env} environment.", "", "",
+        f"Documentation       Values for the {escape(env)} environment.", "", "",
         "*** Variables ***",
-        f"${{HOST}}             {host}",
+        f"${{HOST}}             {escape(host)}",
         "${PROXY}            ${EMPTY}",
     ]) + "\n"
 

@@ -63,3 +63,9 @@ def test_hand_port_reason_stays_text() -> None:
 def test_script_name_stays_text() -> None:
     with pytest.raises(ValueError, match="script name"):
         emit.convert('x"""; raise SystemExit("broke") #.js', options.K6Options((), (), False, 0.0, 1), [])
+
+
+def test_variables_file_escapes_robot_syntax() -> None:
+    text = emit.env_variables("${{1}}", _INLINE)
+    assert "${HOST}             http://\\${{__import__" in text
+    assert "Values for the \\${{1}} environment" in text

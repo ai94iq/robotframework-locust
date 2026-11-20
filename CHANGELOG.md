@@ -2,6 +2,9 @@
 
 ## 0.1.0 (unreleased)
 
+- rflocust-k6 passes the host and environment name through `robot.utils.escape`
+  when it writes the variables file. The host check already refuses Robot
+  syntax; this is a second guard.
 - rflocust-k6 reads `sleep(THINK)` when THINK is a top-level number constant
   or `Number(__ENV.X || n)`. The wait time is the default `n`. Before, the
   function became a hand port and the wait time was 0s.
