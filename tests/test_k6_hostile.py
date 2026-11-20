@@ -61,8 +61,5 @@ def test_hand_port_reason_stays_text() -> None:
 
 
 def test_script_name_stays_text() -> None:
-    name = 'x"""; raise SystemExit("broke") #.js'
-    done = emit.convert(name, options.K6Options((), (), False, 0.0, 1), [])
-    module: dict[str, object] = {}
-    exec(compile(done.files[f"resources/python/{name[:-3]}_tasks.py"], "t.py", "exec"), module)  # noqa: S102
-    assert "Tasks converted from" in str(module["__doc__"])
+    with pytest.raises(ValueError, match="script name"):
+        emit.convert('x"""; raise SystemExit("broke") #.js', options.K6Options((), (), False, 0.0, 1), [])

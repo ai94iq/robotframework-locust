@@ -1,6 +1,7 @@
 """Read a k6 script's resolved options through `k6 inspect`, never `k6 run`."""
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -16,6 +17,8 @@ _UNIT_SECONDS = {"ms": 0.001, "s": 1.0, "m": 60.0, "h": 3600.0}
 _METRIC = re.compile(r"^(\w+)(?:\{endpoint:([\w.:/-]*(?: [\w.:/-]+)*)\})?$", re.ASCII)
 _EXEC_NAME = re.compile(r"[A-Za-z_]\w*", re.ASCII)
 _SCENARIO_NAME = re.compile(r"[\w-]+", re.ASCII)
+# init code can read __ENV, so k6 gets only what it needs to start.
+_INSPECT_ENV = ("PATH", "SYSTEMROOT", "HOME", "USERPROFILE", "TEMP", "TMP", "TMPDIR")
 _EXPR = re.compile(r"^(p\((\d+(?:\.\d+)?)\)|avg|med|min|max|rate)\s*<=?\s*(\d+(?:\.\d+)?)$")
 
 
@@ -119,6 +122,7 @@ def run_inspect(script: Path, env: dict[str, str], timeout: int = 60) -> dict[st
         raise FileNotFoundError("k6 is not on PATH; k6 inspect is needed to read options")
     env_args = [arg for key, value in sorted(env.items()) for arg in ("-e", f"{key}={value}")]
     done = subprocess.run([k6, "inspect", "--execution-requirements", *env_args, str(script)],
-                          capture_output=True, text=True, timeout=timeout, check=True)
+                          capture_output=True, text=True, timeout=timeout, check=True,
+                          env={k: os.environ[k] for k in _INSPECT_ENV if k in os.environ})
     result: dict[str, Any] = json.loads(done.stdout)
     return result

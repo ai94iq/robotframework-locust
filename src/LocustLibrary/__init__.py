@@ -282,16 +282,13 @@ class LocustLibrary:
             max_ms = float(maximum.lower().rstrip("ms"))
         else:
             max_ms = _parse_seconds(maximum) * 1000
-        target = None
-        for r in self._stats.rows:
-            if r.name == endpoint:
-                target = r
-                break
-        if target is None and self._stats.aggregated and endpoint.lower() in ("aggregated", "total", ""):
-            target = self._stats.aggregated
-        if target is None:
+        # One name can hold several methods; the slowest one decides.
+        targets = [r for r in self._stats.rows if r.name == endpoint]
+        if not targets and self._stats.aggregated and endpoint.lower() in ("aggregated", "total", ""):
+            targets = [self._stats.aggregated]
+        if not targets:
             raise RuntimeError(f"Endpoint not found: {endpoint}")
-        actual = _measured_percentile(target, percentile)
+        actual = max(_measured_percentile(r, percentile) for r in targets)
         if actual > max_ms:
             raise AssertionError(
                 f"{endpoint} {percentile}={actual}ms > {max_ms}ms"
@@ -308,20 +305,20 @@ class LocustLibrary:
     @keyword
     def should_meet_error_rate(self, maximum: str, endpoint: str = "") -> None:
         """Assert error rate <= maximum percent, overall or for one endpoint."""
-        row = self._endpoint_row(endpoint) if endpoint else self._aggregated()
+        rows = self._endpoint_rows(endpoint) if endpoint else [self._aggregated()]
         max_rate = float(maximum.rstrip("%")) / 100.0
-        rate = row.failure_count / row.request_count
+        rate = sum(r.failure_count for r in rows) / sum(r.request_count for r in rows)
         if rate > max_rate:
-            raise AssertionError(f"{row.name} error rate {rate:.2%} > {max_rate:.2%}")
+            raise AssertionError(f"{rows[0].name} error rate {rate:.2%} > {max_rate:.2%}")
 
-    def _endpoint_row(self, endpoint: str) -> StatsRow:
-        rows = self._stats.rows if self._stats else []
-        row = next((r for r in rows if r.name == endpoint), None)
-        if row is None:
+    def _endpoint_rows(self, endpoint: str) -> list[StatsRow]:
+        # One name can hold several methods; k6 thresholds count them together.
+        rows = [r for r in (self._stats.rows if self._stats else []) if r.name == endpoint]
+        if not rows:
             raise RuntimeError(f"Endpoint not found: {endpoint}")
-        if row.request_count == 0:
+        if sum(r.request_count for r in rows) == 0:
             raise RuntimeError("No requests recorded.")
-        return row
+        return rows
 
     @keyword
     def export_report(self, base_path: str = "locust") -> str:

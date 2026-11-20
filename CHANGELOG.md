@@ -2,6 +2,14 @@
 
 ## 0.1.0 (unreleased)
 
+- Should Meet Response Time and Should Meet Error Rate check every row with the
+  endpoint name. Before, only the first method was checked, so a slow or
+  failing second method passed. Response time uses the slowest method. Error
+  rate counts all methods together, as k6 does.
+- k6 inspect gets only PATH, the temp and home folders and SYSTEMROOT from the
+  environment. Init code can't read other variables through __ENV.
+- rflocust-k6 refuses a script name with characters other than letters,
+  digits, dot, dash and underscore. The title no longer has double spaces.
 - rflocust-k6 refuses scenario names, exec names and threshold tags that are
   not plain words, and falls back to the default HOST when the script's host
   is not a plain `host[:port]`. Hand-port reasons are written as a string

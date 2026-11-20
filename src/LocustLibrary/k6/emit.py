@@ -15,6 +15,8 @@ _SEP = "    "
 _PERCENTILES = {"p50", "p90", "p95", "p99", "p999"}
 _DEFAULT_HOST = "http://127.0.0.1"
 # HOST is written unquoted into a Robot Variables table, where ${{...}} would run as Python.
+# The script name becomes file names, Robot cells and tags.
+_SCRIPT_NAME = re.compile(r"[A-Za-z0-9_.-]+", re.ASCII)
 _PLAIN_HOST = re.compile(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", re.ASCII)
 
 
@@ -50,6 +52,8 @@ class _Steps:
 def convert(script: str, opts: K6Options, functions: list[ExecFunction],
             max_users: int = 100) -> Conversion:
     """Map what k6 and LocustLibrary share; list the rest as hand port or unsupported."""
+    if not _SCRIPT_NAME.fullmatch(PurePath(script).name):
+        raise ValueError(f"unsupported script name {script!r}")
     report = _Report()
     stem = PurePath(script).stem
     by_name = {f.name: f for f in functions}
@@ -69,7 +73,7 @@ def convert(script: str, opts: K6Options, functions: list[ExecFunction],
 
 
 def _title(script: str) -> str:
-    return PurePath(script).stem.replace("_", " ").title()
+    return " ".join(PurePath(script).stem.replace("_", " ").split()).title()
 
 
 def _peak(scenario: K6Scenario) -> int:
