@@ -92,7 +92,7 @@ def test_exit_seen_without_gevent_loop() -> None:
     import ctypes
 
     libc = ctypes.CDLL(None)
-    process = live._popen([sys.executable, "-c", "pass"])
+    process = live._popen([sys.executable, "-c", "pass"], close_fds=False)
     end = time.monotonic() + 10
     while process.poll() is None and time.monotonic() < end:
         libc.usleep(100_000)
