@@ -14,9 +14,10 @@ from .shape import StageShape
 
 
 def _call_keyword(name: str) -> None:
+    from robot.api.types import KeywordName
     from robot.libraries.BuiltIn import BuiltIn
 
-    BuiltIn().run_keyword(name)
+    BuiltIn().run_keyword(KeywordName(name))
 
 
 def _measure_keyword(user: Any, keyword_name: str) -> None:
@@ -122,7 +123,7 @@ def _patch_gevent() -> None:
 
     if not getattr(gevent.monkey, "_rf_patched", False):
         gevent.monkey.patch_all()
-        gevent.monkey._rf_patched = True
+        setattr(gevent.monkey, "_rf_patched", True)  # noqa: B010
     _PATCHED["done"] = True
 
 
