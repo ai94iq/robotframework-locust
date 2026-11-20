@@ -7,8 +7,10 @@ from typing import Any
 
 from locust import HttpUser, between
 from locust.env import Environment
+from locust.exception import StopUser
 
 from .scenario import RunConfig, Scenario, Stats, StatsRow, Task
+from .shape import StageShape
 
 
 def _call_keyword(name: str) -> None:
@@ -35,14 +37,33 @@ def _run_http(user: Any, task: Task) -> None:
             response.failure(f"status {response.status_code} not in {list(task.expected)}")
 
 
-def _make_task_fn(task: Task) -> Callable[[Any], None]:
+class Budget:
+    """Task runs shared by every user, like k6 shared-iterations. 0 means no limit."""
+
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        self.spent = 0
+
+    @property
+    def done(self) -> bool:
+        return bool(self.limit) and self.spent >= self.limit
+
+    def spend(self) -> None:
+        self.spent += 1
+
+
+def _make_task_fn(task: Task, budget: Budget | None = None) -> Callable[[Any], None]:
     """Build one Locust task for an HTTP call or an RF keyword."""
 
     def task_fn(user: Any) -> None:
+        if budget is not None and budget.done:
+            raise StopUser()
         if task.kind == "rf":
             _measure_keyword(user, task.keyword_name)
         elif task.kind == "http":
             _run_http(user, task)
+        if budget is not None:
+            budget.spend()
 
     task_fn.__name__ = task.name.replace(" ", "_") or "task"
     return task_fn
@@ -124,21 +145,37 @@ def _stats_from_env(env: Any) -> Stats:
     return stats
 
 
-def _build_class(scenario: Scenario) -> type:
+def _build_class(scenario: Scenario, budget: Budget) -> type:
     weighted: list[Any] = []
     for task in scenario.tasks:
-        weighted.extend([_make_task_fn(task)] * max(1, task.weight))
+        weighted.extend([_make_task_fn(task, budget)] * max(1, task.weight))
     return _user_class(scenario, weighted)
+
+
+def _wait_until(seconds: float, budget: Budget) -> None:
+    if not budget.limit:
+        time.sleep(seconds)
+        return
+    end = time.monotonic() + seconds
+    while time.monotonic() < end and not budget.done:
+        time.sleep(0.5)
 
 
 def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
     """Run a load test headless and return parsed stats."""
     _patch_gevent()
-    env = Environment(user_classes=[_build_class(s) for s in scenarios])
+    budget = Budget(config.iterations)
+    shape = StageShape(config.stages) if config.stages else None
+    env = Environment(user_classes=[_build_class(s, budget) for s in scenarios],
+                      shape_class=shape)
     runner = env.create_local_runner()
-
-    runner.start(user_count=config.users, spawn_rate=config.spawn_rate)
-    time.sleep(_parse_time(config.run_time))
+    if shape is None:
+        runner.start(user_count=config.users, spawn_rate=config.spawn_rate)
+        seconds = _parse_time(config.run_time)
+    else:
+        runner.start_shape()
+        seconds = shape.total
+    _wait_until(seconds, budget)
     runner.quit()
     runner.greenlet.join(timeout=10)
 

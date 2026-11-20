@@ -36,14 +36,24 @@ class Scenario:
     tasks: list[Task] = field(default_factory=list)
 
 
+@dataclass(frozen=True, slots=True)
+class Stage:
+    """Reach `users` over `seconds`."""
+
+    seconds: float
+    users: int
+
+
 @dataclass
 class RunConfig:
-    """Run configuration."""
+    """Run configuration. `iterations` 0 means no task limit."""
 
     users: int = 10
     spawn_rate: float = 1.0
     run_time: str = "30s"
     csv_prefix: str = "locust"
+    stages: list[Stage] = field(default_factory=list)
+    iterations: int = 0
 
 
 @dataclass

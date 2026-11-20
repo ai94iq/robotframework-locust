@@ -6,7 +6,7 @@ from robot.api import logger
 from robot.api.deco import keyword
 
 from .runner import run_load_test
-from .scenario import RunConfig, Scenario, Stats, StatsRow, Task
+from .scenario import RunConfig, Scenario, Stage, Stats, StatsRow, Task
 
 __version__ = "0.1.0"
 
@@ -39,6 +39,17 @@ def _statuses(value: object) -> tuple[int, ...]:
     if not codes:
         raise ValueError("expected status is required")
     return codes
+
+
+def _stage(text: str) -> Stage:
+    try:
+        duration, users = text.split(":")
+        stage = Stage(seconds=_parse_seconds(duration), users=int(users))
+    except ValueError as err:
+        raise ValueError(f"bad stage {text!r}: use duration:users, as 2m:20") from err
+    if stage.users < 0 or stage.seconds <= 0:
+        raise ValueError(f"bad stage {text!r}: users and duration must be positive")
+    return stage
 
 
 def _keyword_name(name: str) -> str:
@@ -94,6 +105,13 @@ class LocustLibrary:
         self._scenario = Scenario(host=self._scenario.host, name=name,
                                   weight=weight, fixed_count=fixed_count)
         self._scenarios.append(self._scenario)
+
+    @keyword
+    def set_load_stages(self, *stages: str) -> None:
+        """Ramp like k6 ramping-vus: each `duration:users` stage, as `2m:20`."""
+        if self._config is None:
+            raise RuntimeError("Call Create Load Test first.")
+        self._config.stages = [_stage(s) for s in stages]
 
     @keyword
     def set_wait_time(self, minimum: str, maximum: str) -> None:
@@ -155,13 +173,19 @@ class LocustLibrary:
 
     @keyword
     def run_load_test(self, users: int = 10, spawn_rate: float = 1.0,
-                      run_time: str = "30s", csv_prefix: str = "locust") -> None:
-        """Run the configured load test headless."""
+                      run_time: str = "30s", csv_prefix: str = "locust",
+                      iterations: int = 0) -> None:
+        """Run the configured load test headless.
+
+        `iterations` stops every user after that many task runs in total, within `run_time`.
+        Stages from Set Load Stages replace `users`, `spawn_rate` and `run_time`.
+        """
         if self._scenario is None or self._config is None:
             raise RuntimeError("Call Create Load Test first.")
         self._config.users = users
         self._config.spawn_rate = spawn_rate
         self._config.run_time = run_time
+        self._config.iterations = iterations
         from .validation import sanitize_prefix
 
         self._config.csv_prefix = sanitize_prefix(csv_prefix)
