@@ -87,12 +87,32 @@ def test_observe_listens_on_request_events() -> None:
     assert added == [calls.record]
 
 
+class _Group(list):
+    def spawn(self, *call: Any) -> None:
+        self.append(call)
+
+
 def test_history_recorder_is_started(monkeypatch: pytest.MonkeyPatch) -> None:
-    spawned: list[Any] = []
-    monkeypatch.setattr(runner.gevent, "spawn", lambda fn, arg: spawned.append((fn, arg)) or "g")
+    monkeypatch.setattr(runner, "Group", _Group)
+    monkeypatch.delenv(runner.feed.ENV, raising=False)
     local = object()
-    assert runner._start_history(local) == "g"
-    assert spawned == [(runner.stats_history, local)]
+    assert runner._start_history(local) == [(runner.stats_history, local)]
+
+
+def test_studio_feed_follows_the_history(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    monkeypatch.setattr(runner, "Group", _Group)
+    monkeypatch.setenv(runner.feed.ENV, str(tmp_path / "feed.jsonl"))
+    local = object()
+    assert runner._start_history(local)[1] == (runner.feed.follow, local, str(tmp_path / "feed.jsonl"))
+
+
+def test_finish_writes_final_feed_line(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
+    path = tmp_path / "feed.jsonl"
+    monkeypatch.setenv(runner.feed.ENV, str(path))
+    monkeypatch.setattr(runner, "_stats_from_env", lambda _env: Stats())
+    monkeypatch.setattr(runner, "write_html_report", lambda _env: "")
+    runner._finish(SimpleNamespace(runner=SimpleNamespace(stats=SimpleNamespace(history=[]))), CallLog())
+    assert '"final"' in path.read_text(encoding="utf-8")
 
 
 def test_finish_adds_calls_and_report(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -35,6 +35,22 @@ pip install ".[studio]"  # adds the locust-studio command (PySide6, pyqtgraph)
 pip install ".[k6]"      # tree-sitter parsers for the rflocust-k6 command
 ```
 
+## Locust Studio
+
+`locust-studio` opens a desktop window. **Open suite...** (Ctrl+O) reads a
+`.robot` load suite with a Robot dry run, so nothing is sent, and lists its
+user classes and their tasks. **Run** (Ctrl+R) runs the suite under Robot at
+low priority into a temporary output folder. During the run, Studio shows the
+Robot console and Locust's three report charts, updated every second:
+requests and failures per second, the 50th and 95th percentile response
+times, and users. When the run ends, the Report tab shows Locust's statistics
+table. Its buttons open the Robot log and the Locust HTML report that
+`Export Report` wrote. With no suite open, Run runs the HTTP tasks put
+together on the Build tab.
+
+Run Load Test writes the live feed only when the `LOCUSTLIBRARY_FEED`
+environment variable names a file. Studio sets it for its own runs.
+
 ## Example suite
 
 `home_load.robot` is a short suite. It has one scenario with two GET

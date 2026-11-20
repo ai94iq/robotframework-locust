@@ -2,6 +2,14 @@
 
 ## 0.1.0 (unreleased)
 
+- Locust Studio opens a real `.robot` suite and lists its user classes and
+  tasks in place of the sample lists. It runs the suite under Robot and draws
+  Locust's report charts live, one point a second. The Report tab shows the
+  Locust statistics table and opens the Robot log and the Locust report.
+  Studio no longer crashed when it started Robot on Python 3.15: it now uses
+  the standard `subprocess` in place of gevent's.
+- Run Load Test writes a JSON-lines feed of the chart values and the final
+  stats when `LOCUSTLIBRARY_FEED` names a file.
 - The Locust HTML report from Export Report now has its charts. Run Load Test
   starts Locust's per-second history recorder, which only Locust's own command
   line started before, so the charts were empty.

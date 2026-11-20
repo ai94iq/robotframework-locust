@@ -6,13 +6,14 @@ import warnings
 from collections.abc import Callable
 from typing import Any
 
-import gevent
+from gevent.pool import Group
 from locust import HttpUser, between
 from locust.env import Environment
 from locust.exception import StopUser
 from locust.stats import stats_history
 from urllib3.exceptions import InsecureRequestWarning
 
+from . import feed
 from .calllog import CallLog
 from .reporting import write_html_report
 from .scenario import RunConfig, Scenario, Stats, StatsRow, Task
@@ -215,7 +216,12 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
 
 def _start_history(local: Any) -> Any:
     # Locust fills the report charts from this history; only its own CLI starts the recorder.
-    return gevent.spawn(stats_history, local)
+    group = Group()
+    group.spawn(stats_history, local)
+    path = os.environ.get(feed.ENV)
+    if path:
+        group.spawn(feed.follow, local, path)
+    return group
 
 
 def _observe(env: Any) -> CallLog:
@@ -228,6 +234,9 @@ def _finish(env: Any, calls: CallLog) -> Stats:
     stats = _stats_from_env(env)
     stats.calls, stats.left_out = calls.entries, calls.left_out
     stats.report_html = write_html_report(env)
+    path = os.environ.get(feed.ENV)
+    if path:
+        feed.write_final(path, stats)
     return stats
 
 

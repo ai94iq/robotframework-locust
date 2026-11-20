@@ -12,7 +12,7 @@ from locust.stats import StatsCSV
 from .scenario import Stats, StatsRow
 
 # Columns of Locust's statistics table; the look is measured from Locust's HTML report.
-_HEADINGS = ("Name", "# Requests", "# Fails", "Median (ms)", "95%ile (ms)", "99%ile (ms)",
+HEADINGS = ("Name", "# Requests", "# Fails", "Median (ms)", "95%ile (ms)", "99%ile (ms)",
              "Average (ms)", "Min (ms)", "Max (ms)", "Current RPS", "Failures/s")
 _TABLE = ("border-collapse:collapse;background:#fff;color:rgba(0,0,0,0.87);font-size:14px;"
           "font-family:Roboto,Helvetica,Arial,sans-serif;border-radius:4px;"
@@ -57,7 +57,7 @@ def write_html_report(env: Any) -> str:
 
 def stats_table_html(stats: Stats) -> str:
     """One row per request name, then the aggregated row, for the Robot log."""
-    head = "".join(f'<th style="{_HEAD}">{name}</th>' for name in _HEADINGS)
+    head = "".join(f'<th style="{_HEAD}">{name}</th>' for name in HEADINGS)
     body = "".join(_table_row(r) for r in stats.rows)
     if stats.aggregated:
         body += _table_row(stats.aggregated)
