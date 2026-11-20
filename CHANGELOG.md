@@ -2,6 +2,8 @@
 
 ## 0.1.0 (unreleased)
 
+- Write Stats CSV puts an apostrophe before a name that starts with =, +, -,
+  @, tab or CR, so a spreadsheet shows it as text and doesn't run it.
 - Should Meet Response Time and Should Meet Error Rate check every row with the
   endpoint name. Before, only the first method was checked, so a slow or
   failing second method passed. Response time uses the slowest method. Error

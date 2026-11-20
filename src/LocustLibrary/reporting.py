@@ -43,6 +43,16 @@ def write_html_report(env: Any) -> str:
     return str(report)
 
 
+# Spreadsheets run a cell that starts with one of these as a formula.
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _cell(value: object) -> object:
+    if isinstance(value, str) and value.startswith(_FORMULA_START):
+        return "'" + value
+    return value
+
+
 def write_stats_csv(
     stats: Stats, base_filepath: str, output_dir: str | None = None
 ) -> str:
@@ -62,5 +72,5 @@ def write_stats_csv(
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
         for row in rows:
-            writer.writerow({name: getattr(row, name) for name in fields})
+            writer.writerow({name: _cell(getattr(row, name)) for name in fields})
     return base
