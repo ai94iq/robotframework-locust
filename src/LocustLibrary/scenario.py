@@ -15,7 +15,8 @@ class Task:
     path: str = "/"
     headers: dict[str, str] = field(default_factory=dict)
     body: Any = None
-    expected_status: int = 200
+    json: Any = None
+    expected: tuple[int, ...] = (200,)
     keyword_name: str = ""
     keyword_args: tuple[Any, ...] = field(default_factory=tuple)
 

@@ -88,9 +88,22 @@ def test_csv_snapshot_and_html(tmp_path, monkeypatch) -> None:
 def test_http_task_and_short_run(monkeypatch) -> None:
     seen: list[str] = []
 
+    class Response:
+        status_code = 200
+
+        def __enter__(self) -> "Response":  # noqa: PYI034
+            return self
+
+        def __exit__(self, *_exc: object) -> None:
+            return None
+
+        def success(self) -> None:
+            seen.append("ok")
+
     class Client:
-        def get(self, path: str, headers: dict, data: object, name: str) -> None:
+        def get(self, path: str, **_kwargs: object) -> Response:
             seen.append(path)
+            return Response()
 
     class User:
         client = Client()
@@ -98,7 +111,7 @@ def test_http_task_and_short_run(monkeypatch) -> None:
     task = Task(name="home", kind="http", method="GET", path="/home")
     _make_task_fn(task)(User())
     _make_task_fn(Task(name="nope", kind="http", method="NOPE"))(User())
-    assert seen == ["/home"]
+    assert seen == ["/home", "ok"]
     assert _parse_time("5ms") == 0.005
     assert _row_from_entry("/", object()).p50 == 0.0
 

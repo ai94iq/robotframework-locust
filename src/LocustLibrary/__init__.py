@@ -33,6 +33,14 @@ _PERCENTILE_FIELDS = {
 }
 
 
+def _statuses(value: object) -> tuple[int, ...]:
+    parts = value if isinstance(value, list | tuple) else str(value).split(",")
+    codes = tuple(int(str(p).strip()) for p in parts if str(p).strip())
+    if not codes:
+        raise ValueError("expected status is required")
+    return codes
+
+
 def _keyword_name(name: str) -> str:
     name = name.strip()
     if not name:
@@ -82,15 +90,25 @@ class LocustLibrary:
 
     @keyword
     def add_get_request(self, name: str, path: str, weight: int = 1,
-                        expected_status: int = 200) -> None:
-        """Add a GET request task."""
-        self._add_http_task(name, "GET", path, weight, expected_status)
+                        expected_status: object = 200,
+                        headers: dict[str, str] | None = None) -> None:
+        """Add a GET request task.
+
+        `expected_status` takes one code, a comma list (`200, 204`) or a list.
+        """
+        self._add_http_task(Task(name=name, method="GET", path=path, weight=weight,
+                                 expected=_statuses(expected_status),
+                                 headers=headers or {}))
 
     @keyword
     def add_post_request(self, name: str, path: str, weight: int = 1,
-                         expected_status: int = 200) -> None:
-        """Add a POST request task."""
-        self._add_http_task(name, "POST", path, weight, expected_status)
+                         expected_status: object = 200,
+                         headers: dict[str, str] | None = None,
+                         json: object = None, data: object = None) -> None:
+        """Add a POST request task with a `json` or form `data` body."""
+        self._add_http_task(Task(name=name, method="POST", path=path, weight=weight,
+                                 expected=_statuses(expected_status),
+                                 headers=headers or {}, json=json, body=data))
 
     @keyword
     def add_task(self, name: str, keyword: str = "", weight: int = 1) -> None:
@@ -115,15 +133,10 @@ class LocustLibrary:
             raise RuntimeError("Call Create Load Test first.")
         self._scenario.on_stop = _keyword_name(keyword_name)
 
-    def _add_http_task(
-        self, name: str, method: str, path: str, weight: int, expected_status: int
-    ) -> None:
+    def _add_http_task(self, task: Task) -> None:
         if self._scenario is None:
             raise RuntimeError("Call Create Load Test first.")
-        self._scenario.tasks.append(
-            Task(name=name, kind="http", method=method, path=path,
-                 weight=weight, expected_status=expected_status)
-        )
+        self._scenario.tasks.append(task)
 
     @keyword
     def run_load_test(self, users: int = 10, spawn_rate: float = 1.0,

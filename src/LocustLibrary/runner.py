@@ -24,11 +24,15 @@ def _measure_keyword(user: Any, keyword_name: str) -> None:
 
 
 def _run_http(user: Any, task: Task) -> None:
-    method = task.method.upper()
-    fn = getattr(user.client, method.lower(), None)
+    fn = getattr(user.client, task.method.lower(), None)
     if fn is None:
         return
-    fn(task.path, headers=task.headers or {}, data=task.body, name=task.name)
+    with fn(task.path, headers=task.headers or {}, data=task.body, json=task.json,
+            name=task.name, catch_response=True) as response:
+        if response.status_code in task.expected:
+            response.success()
+        else:
+            response.failure(f"status {response.status_code} not in {list(task.expected)}")
 
 
 def _make_task_fn(task: Task) -> Callable[[Any], None]:
