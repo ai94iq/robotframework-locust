@@ -2,6 +2,12 @@
 
 ## 0.1.0 (unreleased)
 
+- rflocust-k6 refuses scenario names, exec names and threshold tags that are
+  not plain words, and falls back to the default HOST when the script's host
+  is not a plain `host[:port]`. Hand-port reasons are written as a string
+  literal. A hostile k6 script could otherwise put Robot or Python code into
+  the generated files. Docs now say that `k6 inspect` runs the script's init
+  code, so convert only scripts you trust.
 - Add User Class starts a user class with its own tasks, wait time, weight and
   fixed user count. One class maps to one k6 scenario. (b01685d)
 - Set Load Stages ramps users over `duration:users` stages, moving linearly.

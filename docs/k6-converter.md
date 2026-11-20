@@ -18,8 +18,8 @@ page covers how the conversion works, what it maps, and what you port by hand.
 1. The options reader runs `k6 inspect --execution-requirements` on the script
    and reads its resolved options: scenarios, thresholds, the TLS flag and the
    total duration. The call has a 60 s timeout (`run_inspect` in
-   `src/LocustLibrary/k6/options.py`). k6 runs only the script's init code.
-   It sends no request, and the converter never calls `k6 run`.
+   `src/LocustLibrary/k6/options.py`). k6 runs the script's init (top-level) code
+   as you, so convert only scripts you trust. The converter never calls `k6 run`.
 2. The scanner (`src/LocustLibrary/k6/scan.py`) parses the script with
    tree-sitter and reads each exported function. It marks each function plain
    or hand port.
@@ -121,7 +121,8 @@ that name, so a different name leaves the check with no row to read.
   whose peak exceeds it. To change the ceiling, rerun the converter with a new
   `--max-users`, or edit the `max_users=` argument in the Run keyword of
   `collections/<stem>_test_keywords.resource`.
-- The converter sends no request and never runs a k6 load test.
+- The converter never runs a k6 load test, but `k6 inspect` runs the script's
+  init code as you. Convert only scripts you trust.
 
 ## Limits
 

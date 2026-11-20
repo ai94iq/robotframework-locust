@@ -1,6 +1,7 @@
 """rflocust-k6: convert one k6 script into a Robot project for LocustLibrary.
 
-It reads options through `k6 inspect` (init code only, no requests) and never runs k6 load.
+It reads options through `k6 inspect`, which runs the script's init code as the caller, so
+convert only trusted scripts. It never runs k6 load.
 Files land in the four-layer house layout; the shared entry point is rebuilt from the
 collections present, and an environment file is written only when it does not exist yet.
 """

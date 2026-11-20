@@ -12,7 +12,10 @@ from ..scenario import Stage
 
 _DURATION_PART = re.compile(r"(\d+(?:\.\d+)?)(ms|h|m|s)")
 _UNIT_SECONDS = {"ms": 0.001, "s": 1.0, "m": 60.0, "h": 3600.0}
-_METRIC = re.compile(r"^(\w+)(?:\{endpoint:([^}]*)\})?$")
+# Names and tags end up in generated Robot and Python source, so only plain words pass.
+_METRIC = re.compile(r"^(\w+)(?:\{endpoint:([\w.:/-]*(?: [\w.:/-]+)*)\})?$", re.ASCII)
+_EXEC_NAME = re.compile(r"[A-Za-z_]\w*", re.ASCII)
+_SCENARIO_NAME = re.compile(r"[\w-]+", re.ASCII)
 _EXPR = re.compile(r"^(p\((\d+(?:\.\d+)?)\)|avg|med|min|max|rate)\s*<=?\s*(\d+(?:\.\d+)?)$")
 
 
@@ -78,12 +81,17 @@ def _rate(raw: dict[str, Any]) -> float:
 
 
 def _scenario(name: str, raw: dict[str, Any]) -> K6Scenario:
+    exec_name = raw.get("exec") or "default"
+    if not _SCENARIO_NAME.fullmatch(name):
+        raise ValueError(f"unsupported scenario name {name!r}")
+    if not _EXEC_NAME.fullmatch(exec_name):
+        raise ValueError(f"unsupported exec name {exec_name!r} in scenario {name}")
     stages = tuple(Stage(go_seconds(s["duration"]), int(s["target"]))
                    for s in raw.get("stages") or [])
     return K6Scenario(
         name=name,
         executor=raw["executor"],
-        exec_name=raw.get("exec") or "default",
+        exec_name=exec_name,
         stages=stages,
         vus=int(raw.get("vus") or 0),
         iterations=int(raw.get("iterations") or 0),
@@ -105,7 +113,7 @@ def parse_options(data: dict[str, Any]) -> K6Options:
 
 
 def run_inspect(script: Path, env: dict[str, str], timeout: int = 60) -> dict[str, Any]:
-    """k6 runs only the script's init code here; no request is sent."""
+    """k6 runs the script's init code here as the caller; only convert trusted scripts."""
     k6 = shutil.which("k6")
     if k6 is None:
         raise FileNotFoundError("k6 is not on PATH; k6 inspect is needed to read options")

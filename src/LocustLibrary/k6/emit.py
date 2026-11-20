@@ -3,6 +3,7 @@ house layout: a thin suite in tests/, its steps in collections/, one entry resou
 Python tasks under resources/python/, and a report of what needs a hand port.
 """
 
+import re
 from dataclasses import dataclass, field
 from pathlib import PurePath
 from urllib.parse import urlsplit
@@ -13,6 +14,8 @@ from .scan import ExecFunction, HttpCall
 _SEP = "    "
 _PERCENTILES = {"p50", "p90", "p95", "p99", "p999"}
 _DEFAULT_HOST = "http://127.0.0.1"
+# HOST is written unquoted into a Robot Variables table, where ${{...}} would run as Python.
+_PLAIN_HOST = re.compile(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", re.ASCII)
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,7 +184,12 @@ def _host(functions: list[ExecFunction], report: _Report) -> str:
     for call in (c for f in functions for c in f.calls):
         parts = urlsplit(call.url)
         if parts.scheme and parts.netloc:
-            return f"{parts.scheme}://{parts.netloc}"
+            host = f"{parts.scheme}://{parts.netloc}"
+            if _PLAIN_HOST.fullmatch(host):
+                return host
+            report.add("host", "set by hand",
+                       f"script host is not a plain host[:port]; HOST defaults to {_DEFAULT_HOST}")
+            return _DEFAULT_HOST
     report.add("host", "set by hand", f"no absolute URL found; HOST defaults to {_DEFAULT_HOST}")
     return _DEFAULT_HOST
 
@@ -259,7 +267,7 @@ def env_variables(env: str, host: str) -> str:
 
 
 def _tasks_module(script: str, wanted: list[tuple[str, ExecFunction | None]]) -> str:
-    parts = [f'"""Tasks converted from {script}. Each function gets the Locust user."""',
+    parts = [repr(f"Tasks converted from {script}. Each function gets the Locust user."),
              "", "from typing import Any"]
     for name, fn in wanted:
         parts += ["", "", f"def {name}(user: Any) -> None:", *_function_body(script, name, fn)]
@@ -270,8 +278,9 @@ def _function_body(script: str, name: str, fn: ExecFunction | None) -> list[str]
     if fn is None or not fn.simple:
         why = fn.reason if fn else f"exec function {name} not found"
         line = fn.line if fn else 0
-        return [f'    """Hand port from {script} line {line}: {why}."""',
-                f'    raise NotImplementedError("hand port: {script} line {line}")']
+        # The reason quotes k6 source, so repr keeps it a plain string literal.
+        return [f"    {f'Hand port from {script} line {line}: {why}.'!r}",
+                f"    raise NotImplementedError({f'hand port: {script} line {line}'!r})"]
     return [_call_line(call) for call in fn.calls] or ["    del user"]
 
 

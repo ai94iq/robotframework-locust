@@ -164,7 +164,8 @@ Scripts with no thresholds get a `Should Have No Failures` check and an
 approximate row in the report. The report marks each item as mapped,
 approximate, hand port, clamped, set by hand or unsupported.
 
-The converter never runs `k6 run` and sends no request. See
+The converter never runs `k6 run`, but `k6 inspect` runs the script's init
+code as you, so convert only scripts you trust. See
 `docs/k6-converter.md` for the mapping table, the limits and how to port a
 function by hand.
 
