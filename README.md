@@ -11,7 +11,7 @@ and `rflocust-k6` turns a k6 script into a Robot project.
 Site and keyword reference: `docs/index.html` and `docs/keywords.html`,
 served as the repo's GitHub page.
 
-![Locust Studio after a 20-user run](docs/screenshots/studio-run.png)
+![Locust Studio after a 20-user run](https://github.com/ai94iq/robotframework-locust/blob/main/docs/screenshots/studio-run.png)
 
 ## Contents
 
@@ -68,7 +68,7 @@ the Locust HTML report beside `log.html`.
 
 The library has 28 keywords: user classes, pacing, stop rules, Python tasks,
 per-user numbers, data handed between users, and checks for response time,
-error rate and throughput. See [docs/library.md](docs/library.md).
+error rate and throughput. See [docs/library.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/library.md).
 
 ## Watch it in Locust Studio
 
@@ -80,9 +80,9 @@ Open a suite (Ctrl+O) and press Run (Ctrl+R). Studio runs the suite under
 Robot and updates the stats table and Locust's three charts every second.
 When the run ends, the Report tab opens the Robot log and the Locust report.
 Studio has a dark and a light theme and runs on Windows and Linux. See
-[docs/studio.md](docs/studio.md).
+[docs/studio.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/studio.md).
 
-![The Studio Run tab in the dark theme, during a run](docs/screenshots/studio-run-graphite.png)
+![The Studio Run tab in the dark theme, during a run](https://github.com/ai94iq/robotframework-locust/blob/main/docs/screenshots/studio-run-graphite.png)
 
 ## Convert a k6 script
 
@@ -97,7 +97,7 @@ keywords. A function it cannot read becomes a Python task that raises
 `NotImplementedError` until you port it, and a report lists each item as
 mapped, approximate or hand port. The k6 binary must be on PATH.
 `k6 inspect` runs the script's init code as you, so convert only scripts you
-trust. See [docs/k6-converter.md](docs/k6-converter.md).
+trust. See [docs/k6-converter.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/k6-converter.md).
 
 ## Safety limits
 
@@ -110,21 +110,21 @@ A load test can take a server down. These limits are built in:
 - `expected_text` fails a 200 that carries an error page.
 - The Locust web UI and distributed mode bind 127.0.0.1 only.
 
-Read [docs/safety.md](docs/safety.md) before you point a run at a host you do
+Read [docs/safety.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/safety.md) before you point a run at a host you do
 not own.
 
 ## Documentation
 
 | Page | What it covers |
 |---|---|
-| [docs/library.md](docs/library.md) | Writing suites, every keyword, Python tasks, reports |
-| [docs/safety.md](docs/safety.md) | Every limit and how to set it |
-| [docs/studio.md](docs/studio.md) | Locust Studio |
-| [docs/k6-converter.md](docs/k6-converter.md) | The k6 mapping, its limits, porting by hand |
-| [docs/cli.md](docs/cli.md) | The commands and their options |
-| [docs/keywords.html](docs/keywords.html) | Keyword reference, built by libdoc |
-| [docs/references.md](docs/references.md) | Locust and Robot Framework sources |
-| [CHANGELOG.md](CHANGELOG.md) | Changes per release |
+| [docs/library.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/library.md) | Writing suites, every keyword, Python tasks, reports |
+| [docs/safety.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/safety.md) | Every limit and how to set it |
+| [docs/studio.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/studio.md) | Locust Studio |
+| [docs/k6-converter.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/k6-converter.md) | The k6 mapping, its limits, porting by hand |
+| [docs/cli.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/cli.md) | The commands and their options |
+| [docs/keywords.html](https://ai94iq.github.io/robotframework-locust/keywords.html) | Keyword reference, built by libdoc |
+| [docs/references.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/references.md) | Locust and Robot Framework sources |
+| [CHANGELOG.md](https://github.com/ai94iq/robotframework-locust/blob/main/CHANGELOG.md) | Changes per release |
 
 ## For coding agents
 
@@ -134,9 +134,9 @@ Copy the folder into your agent's skills folder to use it in another repo.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the checks and the rules
+See [CONTRIBUTING.md](https://github.com/ai94iq/robotframework-locust/blob/main/CONTRIBUTING.md) for the setup, the checks and the rules
 a change must keep.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](https://github.com/ai94iq/robotframework-locust/blob/main/LICENSE).
