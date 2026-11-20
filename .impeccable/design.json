@@ -1,0 +1,200 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-20T14:11:34.922Z",
+  "title": "Design System: Locust Studio",
+  "extensions": {
+    "colorMeta": {
+      "signal-indigo": {
+        "role": "primary",
+        "displayName": "Signal Indigo",
+        "canonical": "#5865f2",
+        "tonalRamp": [
+          "#1b1f4d",
+          "#262c6e",
+          "#323a92",
+          "#4049b8",
+          "#5865f2",
+          "#7c8cff",
+          "#a7b1ff",
+          "#d7dcff"
+        ]
+      },
+      "ledger-teal": {
+        "role": "primary",
+        "displayName": "Ledger Teal",
+        "canonical": "#0b7476",
+        "tonalRamp": [
+          "#062b2c",
+          "#08413f",
+          "#0a5a5b",
+          "#0b7476",
+          "#24908f",
+          "#56ada9",
+          "#94cfca",
+          "#d3ece9"
+        ]
+      },
+      "graphite-lilac": {
+        "role": "secondary",
+        "displayName": "Graphite Lilac",
+        "canonical": "#c4a1ff"
+      },
+      "paper-rust": {
+        "role": "secondary",
+        "displayName": "Paper Rust",
+        "canonical": "#c2551f"
+      },
+      "graphite-window": {
+        "role": "neutral",
+        "displayName": "Graphite Window",
+        "tonalRamp": [
+          "#0f0f11",
+          "#151518",
+          "#1c1c20",
+          "#232328",
+          "#2c2c32",
+          "#4a4a52",
+          "#8d8d96",
+          "#ececef"
+        ]
+      },
+      "paper-window": {
+        "role": "neutral",
+        "displayName": "Paper Window",
+        "tonalRamp": [
+          "#1d1b18",
+          "#3a3631",
+          "#6f6a61",
+          "#a8a297",
+          "#e2ddd2",
+          "#efece5",
+          "#f7f5f0",
+          "#fffdf9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Every measured number: stats cells, task paths, console."
+      },
+      "metric": {
+        "displayName": "Metric",
+        "purpose": "Run summary figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "segment-lift",
+        "value": "0 1px 2px rgba(0,0,0,0.25)",
+        "purpose": "Active tab inside the segmented control."
+      }
+    ],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Run, Stop, Add task.",
+      "html": "<button class=\"ds-btn-primary\">Run</button>",
+      "css": ".ds-btn-primary{background:#5865f2;color:#fff;border:0;border-radius:6px;padding:6px 14px;font:500 13px Inter,sans-serif}.ds-btn-primary:hover{background:#4049b8}.ds-btn-primary:focus-visible{outline:2px solid #7c8cff;outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Open suite, Open Robot log, Open Locust report.",
+      "html": "<button class=\"ds-btn-ghost\">Open suite</button>",
+      "css": ".ds-btn-ghost{background:transparent;color:#ececef;border:1px solid #2c2c32;border-radius:6px;padding:6px 14px;font:400 13px Inter,sans-serif}.ds-btn-ghost:hover{background:#232328}.ds-btn-ghost:focus-visible{outline:2px solid #7c8cff;outline-offset:2px}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Host, wait times, task fields.",
+      "html": "<input class=\"ds-input\" value=\"http://127.0.0.1:15728\">",
+      "css": ".ds-input{background:#151518;color:#ececef;border:1px solid #2c2c32;border-radius:6px;padding:6px 8px;font:400 13px Inter,sans-serif}.ds-input:focus-visible{outline:none;border:2px solid #7c8cff}"
+    },
+    {
+      "name": "Segmented Tabs",
+      "kind": "nav",
+      "refersTo": "tab-segment",
+      "description": "Build, Run, Report, Settings.",
+      "html": "<div class=\"ds-seg\"><span class=\"ds-on\">Build</span><span>Run</span><span>Report</span><span>Settings</span></div>",
+      "css": ".ds-seg{display:inline-flex;background:#232328;border-radius:8px;padding:2px;font:400 13px Inter,sans-serif}.ds-seg span{padding:4px 12px;border-radius:6px;color:#8d8d96;cursor:pointer}.ds-seg span:hover{color:#ececef}.ds-seg .ds-on{background:#151518;color:#ececef;box-shadow:0 1px 2px rgba(0,0,0,.25)}"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "Ready, Running, Run complete.",
+      "html": "<span class=\"ds-pill\"><i></i>Running 16 s</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;background:#232328;color:#3ecf8e;border-radius:999px;padding:3px 10px;font:400 11px Inter,sans-serif}.ds-pill i{width:6px;height:6px;border-radius:50%;background:#3ecf8e}"
+    },
+    {
+      "name": "Method Chip",
+      "kind": "chip",
+      "refersTo": "",
+      "description": "GET and POST on task rows.",
+      "html": "<span class=\"ds-chip\">GET</span>",
+      "css": ".ds-chip{font:500 10px \"JetBrains Mono\",monospace;padding:1px 5px;border-radius:4px;background:rgba(62,207,142,.18);color:#3ecf8e}"
+    },
+    {
+      "name": "Stats Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Stats table in a card; numbers right-aligned in mono.",
+      "html": "<div class=\"ds-card\"><table><tr><th>Name</th><th>Requests</th><th>Fails</th></tr><tr><td>home</td><td>176</td><td>0</td></tr><tr><td>missing page</td><td>33</td><td class=\"ds-bad\">33</td></tr></table></div>",
+      "css": ".ds-card{background:#1c1c20;border:1px solid #2c2c32;border-radius:8px;color:#ececef;font:400 12px Inter,sans-serif}.ds-card table{border-collapse:collapse;width:100%}.ds-card th{color:#8d8d96;font-weight:600;text-align:right;padding:6px 10px}.ds-card th:first-child,.ds-card td:first-child{text-align:left;font-family:Inter,sans-serif}.ds-card td{text-align:right;padding:6px 10px;border-top:1px solid #2c2c32;font-family:\"JetBrains Mono\",monospace;font-variant-numeric:tabular-nums}.ds-card .ds-bad{color:#f2555a}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Measured Workbench",
+    "overview": "Locust Studio is a desktop workbench for engineers who read numbers. Scenario on the left, the work in the middle, the console on the right. It is dense but calm: panels separate by tone, not by lines, and the only loud things on screen are the Run button, the live status and a failure count above zero. Two themes share one structure: Graphite (dark, default) and Paper (light, warm off-white for bright rooms and report screenshots).",
+    "keyCharacteristics": [
+      "Two themes, one structure: Graphite dark (default) and Paper light",
+      "Inter for the chrome, JetBrains Mono with tabular figures for every measured number",
+      "One accent per theme, used on the primary action, the selected state and focus",
+      "Flat, tonal layering; no shadows at rest",
+      "Numbers right-aligned; red appears only when a failure count is above zero"
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Each theme has one accent. It goes on the primary action, the active tab, focus and nothing decorative.",
+        "section": "colors"
+      },
+      {
+        "name": "The Earned Red Rule",
+        "body": "A zero is plain ink. Red appears only on a failure count above zero or a failure share, so red on screen always means something failed.",
+        "section": "colors"
+      },
+      {
+        "name": "The Measured-Number Rule",
+        "body": "Every value that came from a run or a count uses the mono face with tabular figures and is right-aligned. Names and labels never use the mono face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tone-Not-Line Rule",
+        "body": "Separate areas with a tonal step first. A border appears only between the three panes, under table rows and around inputs.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do right-align every number in JetBrains Mono with tabular figures.",
+      "Do keep one accent per theme: Signal Indigo in Graphite, Ledger Teal in Paper.",
+      "Do separate areas with tone (window, panel, raised) before reaching for a border.",
+      "Do keep text at 4.5:1 or better: muted text uses the muted token, never a lighter grey."
+    ],
+    "donts": [
+      "Don't colour a zero failure count red.",
+      "Don't use decorative gradients, glassmorphism or glow.",
+      "Don't put a 1px border around every panel; the old look did this.",
+      "Don't add icons where a text label suffices.",
+      "Don't animate metric values beyond a plain update each second."
+    ]
+  }
+}
