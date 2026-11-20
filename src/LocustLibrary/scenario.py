@@ -29,6 +29,8 @@ class Scenario:
     name: str = "RFUser"
     weight: int = 1
     fixed_count: int = 0
+    verify_tls: bool = True
+    proxy: str = ""
     wait_min: float = 1.0
     wait_max: float = 3.0
     on_start: str = ""

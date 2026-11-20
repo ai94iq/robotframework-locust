@@ -76,12 +76,29 @@ def _keyword_method(keyword_name: str) -> Callable[[Any], None]:
     return method
 
 
+class _RFHttpUser(HttpUser):
+    """HttpUser whose TLS check and proxy come from the scenario."""
+
+    abstract = True
+    verify_tls = True
+    proxy = ""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore[no-untyped-call]
+        self.client.verify = self.verify_tls
+        if self.proxy:
+            # Locust turns off trust_env, so HTTPS_PROXY is never read on its own.
+            self.client.proxies = {"http": self.proxy, "https": self.proxy}
+
+
 def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
     attrs: dict[str, Any] = {
         "host": scenario.host,
         "tasks": tasks,
         "weight": scenario.weight,
         "fixed_count": scenario.fixed_count,
+        "verify_tls": scenario.verify_tls,
+        "proxy": scenario.proxy,
         "abstract": False,
         "wait_time": between(scenario.wait_min, scenario.wait_max),
     }
@@ -89,7 +106,7 @@ def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
         attrs["on_start"] = _keyword_method(scenario.on_start)
     if scenario.on_stop:
         attrs["on_stop"] = _keyword_method(scenario.on_stop)
-    return type(scenario.name, (HttpUser,), attrs)
+    return type(scenario.name, (_RFHttpUser,), attrs)
 
 
 _PATCHED = {"done": False}

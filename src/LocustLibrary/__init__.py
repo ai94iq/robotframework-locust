@@ -83,12 +83,16 @@ class LocustLibrary:
         self._dist_workers: list[subprocess.Popen[bytes]] | None = None
 
     @keyword
-    def create_load_test(self, host: str) -> None:
-        """Create a new load test scenario."""
+    def create_load_test(self, host: str, verify_tls: bool = True, proxy: str = "") -> None:
+        """Create a new load test scenario.
+
+        `verify_tls=False` matches k6 insecureSkipTLSVerify. `proxy` is an http:// proxy URL;
+        Locust ignores HTTPS_PROXY, so pass it here.
+        """
         from .validation import validate_host
 
         host = validate_host(host)
-        self._scenario = Scenario(host=host)
+        self._scenario = Scenario(host=host, verify_tls=verify_tls, proxy=proxy)
         self._scenarios = [self._scenario]
         self._config = RunConfig()
         self._stats = None
@@ -102,8 +106,10 @@ class LocustLibrary:
         """
         if self._scenario is None:
             raise RuntimeError("Call Create Load Test first.")
-        self._scenario = Scenario(host=self._scenario.host, name=name,
-                                  weight=weight, fixed_count=fixed_count)
+        current = self._scenario
+        self._scenario = Scenario(host=current.host, name=name, weight=weight,
+                                  fixed_count=fixed_count, verify_tls=current.verify_tls,
+                                  proxy=current.proxy)
         self._scenarios.append(self._scenario)
 
     @keyword
@@ -257,13 +263,22 @@ class LocustLibrary:
             raise AssertionError(f"RPS {row.rps} < {min_rps}")
 
     @keyword
-    def should_meet_error_rate(self, maximum: str) -> None:
-        """Assert error rate <= maximum percent."""
-        row = self._aggregated()
+    def should_meet_error_rate(self, maximum: str, endpoint: str = "") -> None:
+        """Assert error rate <= maximum percent, overall or for one endpoint."""
+        row = self._endpoint_row(endpoint) if endpoint else self._aggregated()
         max_rate = float(maximum.rstrip("%")) / 100.0
         rate = row.failure_count / row.request_count
         if rate > max_rate:
-            raise AssertionError(f"Error rate {rate:.2%} > {max_rate:.2%}")
+            raise AssertionError(f"{row.name} error rate {rate:.2%} > {max_rate:.2%}")
+
+    def _endpoint_row(self, endpoint: str) -> StatsRow:
+        rows = self._stats.rows if self._stats else []
+        row = next((r for r in rows if r.name == endpoint), None)
+        if row is None:
+            raise RuntimeError(f"Endpoint not found: {endpoint}")
+        if row.request_count == 0:
+            raise RuntimeError("No requests recorded.")
+        return row
 
     @keyword
     def export_report(self, base_path: str = "locust") -> str:
