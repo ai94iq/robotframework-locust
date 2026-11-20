@@ -2,6 +2,12 @@
 
 ## 0.1.0 (unreleased)
 
+- New keywords Get User Index and Get User Iteration give a task keyword the
+  number of the virtual user running it and its task run count, so each user
+  can build unique data. Python tasks read `user.index` and `user.iteration`.
+  Users share one Robot process, so these are keywords that read the running
+  user, not variables another user could overwrite. The idea comes from the
+  rfswarm RFS_INDEX, RFS_ROBOT and RFS_ITERATION variables.
 - New keyword Set Pacing starts a task run every interval per user, whatever
   the response time, so a slow server does not lower the planned rate. It uses
   Locust constant_pacing, like the Apply Pacing setting in rfswarm.

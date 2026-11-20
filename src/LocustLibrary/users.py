@@ -3,10 +3,21 @@
 from collections.abc import Callable
 from typing import Any
 
+import gevent.local
 from locust import HttpUser, between, constant_pacing
 from locust.exception import StopUser
 
 from .scenario import Scenario, Task
+
+# Every user runs in its own greenlet, so this holds the user whose task is running now.
+_running = gevent.local.local()
+
+
+def current_user() -> Any:
+    user = getattr(_running, "user", None)
+    if user is None:
+        raise RuntimeError("This keyword works only inside a load test task.")
+    return user
 
 
 def _call_keyword(name: str) -> None:
@@ -38,11 +49,17 @@ def _run_http(user: Any, task: Task) -> None:
 
 
 class Budget:
-    """Task runs shared by every user, like k6 shared-iterations. 0 means no limit."""
+    """Run-wide counts shared by every user: task runs (like k6 shared-iterations; 0 means
+    no limit) and user numbers."""
 
     def __init__(self, limit: int) -> None:
         self.limit = limit
         self.spent = 0
+        self.users = 0
+
+    def next_user(self) -> int:
+        self.users += 1
+        return self.users
 
     @property
     def done(self) -> bool:
@@ -58,12 +75,12 @@ def _make_task_fn(task: Task, budget: Budget | None = None) -> Callable[[Any], N
     def task_fn(user: Any) -> None:
         if budget is not None and budget.done:
             raise StopUser()
-        if task.kind == "rf":
-            _measure_keyword(user, task.keyword_name)
-        elif task.kind == "http":
-            _run_http(user, task)
-        elif task.kind == "py" and task.function is not None:
-            task.function(user)
+        user.iteration = getattr(user, "iteration", 0) + 1
+        _running.user = user
+        try:
+            _run_task(user, task)
+        finally:
+            _running.user = None
         if budget is not None:
             budget.spend()
 
@@ -71,9 +88,22 @@ def _make_task_fn(task: Task, budget: Budget | None = None) -> Callable[[Any], N
     return task_fn
 
 
+def _run_task(user: Any, task: Task) -> None:
+    if task.kind == "rf":
+        _measure_keyword(user, task.keyword_name)
+    elif task.kind == "http":
+        _run_http(user, task)
+    elif task.kind == "py" and task.function is not None:
+        task.function(user)
+
+
 def _keyword_method(keyword_name: str) -> Callable[[Any], None]:
     def method(user: Any) -> None:
-        _measure_keyword(user, keyword_name)
+        _running.user = user
+        try:
+            _measure_keyword(user, keyword_name)
+        finally:
+            _running.user = None
 
     return method
 
@@ -84,17 +114,21 @@ class _RFHttpUser(HttpUser):
     abstract = True
     verify_tls = True
     proxy = ""
+    budget: Budget | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)  # type: ignore[no-untyped-call]
+        self.index = self.budget.next_user() if self.budget else 0
+        self.iteration = 0
         self.client.verify = self.verify_tls
         if self.proxy:
             # Locust turns off trust_env, so HTTPS_PROXY is never read on its own.
             self.client.proxies = {"http": self.proxy, "https": self.proxy}
 
 
-def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
+def _user_class(scenario: Scenario, tasks: list[Any], budget: Budget | None = None) -> type:
     attrs: dict[str, Any] = {
+        "budget": budget,
         "host": scenario.host,
         "tasks": tasks,
         "weight": scenario.weight,
@@ -116,4 +150,4 @@ def build_class(scenario: Scenario, budget: Budget) -> type:
     weighted: list[Any] = []
     for task in scenario.tasks:
         weighted.extend([_make_task_fn(task, budget)] * max(1, task.weight))
-    return _user_class(scenario, weighted)
+    return _user_class(scenario, weighted, budget)

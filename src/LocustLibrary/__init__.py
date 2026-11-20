@@ -68,6 +68,23 @@ class LocustLibrary(BuildKeywords, CheckKeywords):
         if self._stats.stop_failed:
             raise AssertionError(f"Load test {self._stats.stopped}")
 
+    @keyword
+    def get_user_index(self) -> int:
+        """Return the number of the virtual user running this task, unique within the run.
+
+        Use it for a unique value or a data row per user, such as `${PREFIX}_${index}`.
+        """
+        from .users import current_user
+
+        return int(current_user().index)
+
+    @keyword
+    def get_user_iteration(self) -> int:
+        """Return how many task runs this virtual user has started, counting this one."""
+        from .users import current_user
+
+        return int(current_user().iteration)
+
     def _log_run(self, stats: Stats) -> None:
         from .reporting import stats_table_html
 
