@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.3 (2026-11-20)
+
+- Docs: README images use raw file URLs, so the PyPI page shows them.
+
 ## 1.0.2 (2026-11-20)
 
 - Docs: the README uses absolute links, so the PyPI page shows its images.
