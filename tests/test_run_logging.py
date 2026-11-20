@@ -49,7 +49,7 @@ def test_run_logs_table_calls_and_tls(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _messages(monkeypatch)
     monkeypatch.setattr(lib_module, "run_load_test", lambda _s, _c: _stats())
     lib = LocustLibrary()
-    lib.create_load_test("https://h.test", verify_tls=False)
+    lib.create_load_test("https://h.test", verify_tls=False, allowed_hosts="h.test")
     lib.run_load_test(users=1, run_time="1s")
     assert seen[0] == ("WARN", "TLS verification is off for https://h.test", False)
     assert seen[1][1].startswith("<table") and seen[1][2]

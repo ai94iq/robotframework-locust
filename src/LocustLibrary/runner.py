@@ -39,10 +39,13 @@ def _run_http(user: Any, task: Task) -> None:
         return
     with fn(task.path, headers=task.headers or {}, data=task.body, json=task.json,
             name=task.name, catch_response=True) as response:
-        if response.status_code in task.expected:
-            response.success()
-        else:
+        if response.status_code not in task.expected:
             response.failure(f"status {response.status_code} not in {list(task.expected)}")
+        elif task.expected_text and task.expected_text not in (response.text or ""):
+            # A 200 carrying an error page would otherwise count as a success.
+            response.failure(f"expected text '{task.expected_text}' not in the body")
+        else:
+            response.success()
 
 
 class Budget:
@@ -179,13 +182,29 @@ def _build_class(scenario: Scenario, budget: Budget) -> type:
     return _user_class(scenario, weighted)
 
 
-def _wait_until(seconds: float, budget: Budget) -> None:
-    if not budget.limit:
-        time.sleep(seconds)
-        return
-    end = time.monotonic() + seconds
-    while time.monotonic() < end and not budget.done:
+def fail_breaker(local: Any, limit: float, warmup: float) -> Callable[[float], str]:
+    """A check that names why the run should stop once failures pass the limit after warm-up."""
+    def check(elapsed: float) -> str:
+        if not limit or elapsed < warmup:
+            return ""
+        total = local.stats.total
+        if total.num_requests and total.fail_ratio > limit:
+            return (f"stopped after {elapsed:.0f} s: failure ratio {total.fail_ratio:.1%} "
+                    f"is over {limit:.1%}")
+        return ""
+
+    return check
+
+
+def _wait_until(seconds: float, budget: Budget,
+                breaker: Callable[[float], str] | None = None) -> str:
+    start = time.monotonic()
+    while (now := time.monotonic()) - start < seconds and not budget.done:
+        reason = breaker(now - start) if breaker else ""
+        if reason:
+            return reason
         time.sleep(0.5)
+    return ""
 
 
 def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
@@ -207,11 +226,14 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
         else:
             runner.start_shape()
             seconds = shape.total
-        _wait_until(seconds, budget)
+        stopped = _wait_until(seconds, budget, fail_breaker(
+            runner, config.stop_on_fail_ratio, config.fail_ratio_warmup))
         runner.quit()
         runner.greenlet.join(timeout=10)
     history.kill(block=False)
-    return _finish(env, calls)
+    stats = _finish(env, calls)
+    stats.stopped = stopped
+    return stats
 
 
 def _start_history(local: Any) -> Any:
@@ -234,6 +256,8 @@ def _finish(env: Any, calls: CallLog) -> Stats:
     stats = _stats_from_env(env)
     stats.calls, stats.left_out = calls.entries, calls.left_out
     stats.report_html = write_html_report(env)
+    # Locust only prints this to its own log; an overloaded generator inflates response times.
+    stats.cpu_busy = bool(getattr(getattr(env, "runner", None), "cpu_warning_emitted", False))
     path = os.environ.get(feed.ENV)
     if path:
         feed.write_final(path, stats)

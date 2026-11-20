@@ -86,17 +86,17 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 
 | Keyword | Arguments | What it does |
 |---|---|---|
-| Create Load Test | host, verify_tls=True, proxy= | Starts a scenario. The host is an http or https URL with no user name or password. |
+| Create Load Test | host, verify_tls=True, proxy=, allowed_hosts= | Starts a scenario. The host is an http or https URL with no user name or password. If an allowlist is set, the host name must be on it. |
 | Add User Class | name, weight=1, fixed_count=0 | Starts a user class. Later tasks and waits belong to it. |
 | Set Wait Time | minimum, maximum | Think time between tasks. |
 | Set Load Stages | *stages | Ramps users over `duration:users` stages, such as `2m:20`. With stages, Run Load Test ignores users, spawn rate and run time. |
-| Add Get Request | name, path, weight=1, expected_status=200, headers= | Adds a GET task. Only the listed status codes pass. |
-| Add Post Request | name, path, weight=1, expected_status=200, headers=, json=, data= | Adds a POST task with a JSON or form body. |
+| Add Get Request | name, path, weight=1, expected_status=200, headers=, expected_text= | Adds a GET task. Only the listed status codes pass. With expected_text, the body must also contain that text. |
+| Add Post Request | name, path, weight=1, expected_status=200, headers=, json=, data=, expected_text= | Adds a POST task with a JSON or form body. With expected_text, the body must also contain that text. |
 | Add Task | name, keyword, weight=1 | Adds a task that runs a Robot Framework keyword. |
 | Add Python Task | name, function, weight=1 | Adds a task that calls `module.function` with the Locust user. |
 | Set On Start | keyword_name | Sets the keyword each user runs when it starts. |
 | Set On Stop | keyword_name | Sets the keyword each user runs when it stops. |
-| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100 | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users. iterations caps the task runs for all users together. The log gets a stats table per request name and the first 3 calls of each name plus up to 50 failed calls, in RequestsLibrary style. Passwords, client secrets, tokens, OTP fields and auth headers show as `***`. With verify_tls off, it logs one warning per host. |
+| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100, stop_on_fail_ratio=0, fail_ratio_warmup=10s | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users. iterations caps the task runs for all users together. The log gets a stats table per request name and the first 3 calls of each name plus up to 50 failed calls, in RequestsLibrary style. Passwords, client secrets, tokens, OTP fields and auth headers show as `***`. With verify_tls off, it logs one warning per host. With stop_on_fail_ratio set, the run stops early when failures pass it. |
 | Get Locust Stats | none | Returns the stats rows, the aggregated row and the fail ratio as a dict. |
 | Get Aggregated Stats | none | Returns the aggregated stats row as a dict. |
 | Should Have No Failures | none | Fails if any request failed. |
@@ -125,6 +125,23 @@ Read these before you run a test against a host you do not own.
   highest stage user count, or `users` when there are no stages, or the sum
   of the `fixed_count` values of the user classes if that sum is higher. To
   run more users, pass a higher `max_users` on purpose.
+- **Host allowlist.** Create Load Test checks the host name against
+  `allowed_hosts` (a comma list), or against the
+  `LOCUSTLIBRARY_ALLOWED_HOSTS` environment variable when the argument is
+  empty. A host that is not on the list is refused before any request. With
+  no list set, the host is accepted and the log shows one warning.
+- **Failure breaker.** `stop_on_fail_ratio` on Run Load Test, such as `20%`,
+  stops the run when the share of failed requests goes over it. The check
+  starts after `fail_ratio_warmup` (default 10s) and runs every half second.
+  The log shows the reason as a warning. The default 0 turns it off.
+- **Body check.** A server can answer 200 with an error page. Pass
+  `expected_text` to Add Get Request or Add Post Request, and a response
+  without that text counts as a failure.
+- **No requests, no pass.** The Should keywords fail when the run, or the
+  endpoint they check, recorded no requests.
+- **Busy load generator.** When Locust sees this machine's CPU above 90%,
+  Run Load Test logs a warning. Response times from such a run can be too
+  high, because the generator itself is slow.
 - **Web UI on loopback.** Start Locust Web binds 127.0.0.1 only. The keyword
   has no host argument, so other machines cannot reach the web UI through it.
 - **Distributed mode stays on this machine.** Run Distributed binds the master

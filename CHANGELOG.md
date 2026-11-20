@@ -2,6 +2,15 @@
 
 ## 0.1.0 (unreleased)
 
+- Create Load Test takes `allowed_hosts`, or reads
+  `LOCUSTLIBRARY_ALLOWED_HOSTS`, and refuses a host that is not on the list.
+  With no list, it logs a warning and goes on.
+- Run Load Test takes `stop_on_fail_ratio` and `fail_ratio_warmup`. It stops
+  the run early when the failure ratio goes over the limit after the warm-up,
+  and logs the reason.
+- Add Get Request and Add Post Request take `expected_text`. A response
+  whose body lacks it counts as failed, so a 200 error page no longer passes.
+- Run Load Test logs a warning when Locust saw the generator CPU above 90%.
 - Locust Studio opens a real `.robot` suite and lists its user classes and
   tasks in place of the sample lists. It runs the suite under Robot and draws
   Locust's report charts live, one point a second. The Report tab shows the

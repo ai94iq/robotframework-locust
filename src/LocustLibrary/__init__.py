@@ -85,6 +85,12 @@ def _measured_percentile(row: StatsRow, percentile: str) -> float:
     return float(getattr(row, field))
 
 
+def _ratio(value: object) -> float:
+    """`20%` or `0.2` as a fraction."""
+    text = str(value).strip()
+    return float(text.rstrip("%")) / 100 if text.endswith("%") else float(text)
+
+
 def _output_dir() -> str | None:
     """Robot's output folder, so reports land beside log.html; None outside a Robot run."""
     from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
@@ -114,15 +120,23 @@ class LocustLibrary:
         self._dist_workers: list[subprocess.Popen[bytes]] | None = None
 
     @keyword
-    def create_load_test(self, host: str, verify_tls: bool = True, proxy: str = "") -> None:
+    def create_load_test(self, host: str, verify_tls: bool = True, proxy: str = "",
+                         allowed_hosts: str = "") -> None:
         """Create a new load test scenario.
 
         `verify_tls=False` matches k6 insecureSkipTLSVerify. `proxy` is an http:// proxy URL;
         Locust ignores HTTPS_PROXY, so pass it here.
+        `allowed_hosts` is a comma list of host names the test may hit; when it is empty the
+        LOCUSTLIBRARY_ALLOWED_HOSTS environment variable is used. A host outside the list is
+        refused. With no list at all the host is accepted and one warning is logged.
         """
+        from .validation import allowed_hosts as read_allowed
         from .validation import validate_host
 
-        host = validate_host(host)
+        allowed = read_allowed(allowed_hosts)
+        host = validate_host(host, allowed)
+        if not allowed:
+            logger.warn(f"No allowed hosts set; {host} is not checked against a list")
         self._scenario = Scenario(host=host, verify_tls=verify_tls, proxy=proxy)
         self._scenarios = [self._scenario]
         self._default = self._scenario
@@ -165,24 +179,31 @@ class LocustLibrary:
     @keyword
     def add_get_request(self, name: str, path: str, weight: int = 1,
                         expected_status: object = 200,
-                        headers: dict[str, str] | None = None) -> None:
+                        headers: dict[str, str] | None = None,
+                        expected_text: str = "") -> None:
         """Add a GET request task.
 
         `expected_status` takes one code, a comma list (`200, 204`) or a list.
+        `expected_text` must appear in the response body, or the request counts as failed.
         """
         self._add_http_task(Task(name=name, method="GET", path=path, weight=weight,
                                  expected=_statuses(expected_status),
-                                 headers=headers or {}))
+                                 headers=headers or {}, expected_text=expected_text))
 
     @keyword
     def add_post_request(self, name: str, path: str, weight: int = 1,
                          expected_status: object = 200,
                          headers: dict[str, str] | None = None,
-                         json: object = None, data: object = None) -> None:
-        """Add a POST request task with a `json` or form `data` body."""
+                         json: object = None, data: object = None,
+                         expected_text: str = "") -> None:
+        """Add a POST request task with a `json` or form `data` body.
+
+        `expected_text` must appear in the response body, or the request counts as failed.
+        """
         self._add_http_task(Task(name=name, method="POST", path=path, weight=weight,
                                  expected=_statuses(expected_status),
-                                 headers=headers or {}, json=json, body=data))
+                                 headers=headers or {}, json=json, body=data,
+                                 expected_text=expected_text))
 
     @keyword
     def add_task(self, name: str, keyword: str = "", weight: int = 1) -> None:
@@ -228,13 +249,16 @@ class LocustLibrary:
     @keyword
     def run_load_test(self, users: int = 10, spawn_rate: float = 1.0,
                       run_time: str = "30s", iterations: int = 0,
-                      max_users: int = 100) -> None:
+                      max_users: int = 100, stop_on_fail_ratio: str = "0",
+                      fail_ratio_warmup: str = "10s") -> None:
         """Run the configured load test headless.
 
         `iterations` stops every user after that many task runs in total, within `run_time`.
         Stages from Set Load Stages replace `users`, `spawn_rate` and `run_time`.
         A run that would start more than `max_users` users is refused before it starts.
         The log gets a stats table and the first calls of every request name plus the failed ones.
+        `stop_on_fail_ratio` (`20%` or `0.2`; 0 is off) stops the run early once the share of
+        failed requests passes it after `fail_ratio_warmup`; the reason is logged as a warning.
         """
         if self._scenario is None or self._config is None:
             raise RuntimeError("Call Create Load Test first.")
@@ -242,10 +266,16 @@ class LocustLibrary:
         self._config.spawn_rate = spawn_rate
         self._config.run_time = run_time
         self._config.iterations = iterations
+        self._config.stop_on_fail_ratio = _ratio(stop_on_fail_ratio)
+        self._config.fail_ratio_warmup = _parse_seconds(fail_ratio_warmup)
         self._check_ceiling(self._config, max_users)
         for host in dict.fromkeys(s.host for s in self._scenarios if not s.verify_tls):
             logger.warn(f"TLS verification is off for {host}")
         self._stats = run_load_test(self._scenarios, self._config)
+        if self._stats.stopped:
+            logger.warn(f"Load test {self._stats.stopped}")
+        if self._stats.cpu_busy:
+            logger.warn("Load generator CPU went over 90%; response times may be too high")
         self._log_run(self._stats)
 
     def _log_run(self, stats: Stats) -> None:

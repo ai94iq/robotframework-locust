@@ -21,6 +21,7 @@ class Task:
     keyword_name: str = ""
     keyword_args: tuple[Any, ...] = field(default_factory=tuple)
     function: Callable[[Any], None] | None = None
+    expected_text: str = ""
 
 
 @dataclass
@@ -57,6 +58,8 @@ class RunConfig:
     run_time: str = "30s"
     stages: list[Stage] = field(default_factory=list)
     iterations: int = 0
+    stop_on_fail_ratio: float = 0.0
+    fail_ratio_warmup: float = 10.0
 
 
 @dataclass
@@ -90,3 +93,5 @@ class Stats:
     calls: list[str] = field(default_factory=list, repr=False)
     left_out: int = 0
     report_html: str = field(default="", repr=False)
+    stopped: str = ""
+    cpu_busy: bool = False

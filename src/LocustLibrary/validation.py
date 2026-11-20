@@ -4,14 +4,24 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+ALLOWED_HOSTS_ENV = "LOCUSTLIBRARY_ALLOWED_HOSTS"
 
-def validate_host(host: str) -> str:
+
+def allowed_hosts(value: str) -> list[str]:
+    """Host names from the argument, else from LOCUSTLIBRARY_ALLOWED_HOSTS; comma separated."""
+    raw = value or os.environ.get(ALLOWED_HOSTS_ENV, "")
+    return [name.strip().lower() for name in raw.split(",") if name.strip()]
+
+
+def validate_host(host: str, allowed: list[str] | None = None) -> str:
     host = (host or "").strip()
     parts = urlsplit(host)
     if parts.scheme not in {"http", "https"} or parts.hostname is None:
         raise ValueError("host must be an http or https URL")
     if parts.username is not None or parts.password is not None:
         raise ValueError("host must not include credentials")
+    if allowed and parts.hostname.lower() not in allowed:
+        raise ValueError(f"{parts.hostname} is not in the allowed hosts: {', '.join(allowed)}")
     return host
 
 
