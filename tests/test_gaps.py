@@ -136,7 +136,7 @@ def test_http_task_and_short_run(monkeypatch) -> None:
         lambda **_kwargs: type("Env", (), {"create_local_runner": lambda self: Local()})(),
     )
     scenario = Scenario(host="http://127.0.0.1", tasks=[task])
-    stats = run_load_test(scenario, RunConfig(run_time="1s", users=1, spawn_rate=1))
+    stats = run_load_test([scenario], RunConfig(run_time="1s", users=1, spawn_rate=1))
     assert isinstance(stats, Stats)
 
 

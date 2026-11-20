@@ -64,6 +64,7 @@ class LocustLibrary:
 
     def __init__(self) -> None:
         self._scenario: Scenario | None = None
+        self._scenarios: list[Scenario] = []
         self._config: RunConfig | None = None
         self._stats: Stats | None = None
         self._web_proc: subprocess.Popen[bytes] | None = None
@@ -77,8 +78,22 @@ class LocustLibrary:
 
         host = validate_host(host)
         self._scenario = Scenario(host=host)
+        self._scenarios = [self._scenario]
         self._config = RunConfig()
         self._stats = None
+
+    @keyword
+    def add_user_class(self, name: str, weight: int = 1, fixed_count: int = 0) -> None:
+        """Start a new user class; later tasks and waits belong to it.
+
+        One class per k6 scenario. `weight` splits the users by ratio,
+        `fixed_count` pins an exact number of users.
+        """
+        if self._scenario is None:
+            raise RuntimeError("Call Create Load Test first.")
+        self._scenario = Scenario(host=self._scenario.host, name=name,
+                                  weight=weight, fixed_count=fixed_count)
+        self._scenarios.append(self._scenario)
 
     @keyword
     def set_wait_time(self, minimum: str, maximum: str) -> None:
@@ -150,7 +165,7 @@ class LocustLibrary:
         from .validation import sanitize_prefix
 
         self._config.csv_prefix = sanitize_prefix(csv_prefix)
-        self._stats = run_load_test(self._scenario, self._config)
+        self._stats = run_load_test(self._scenarios, self._config)
         logger.info(f"Load test finished: {self._stats}")
 
     @keyword

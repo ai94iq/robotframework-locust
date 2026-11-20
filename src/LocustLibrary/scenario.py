@@ -26,6 +26,9 @@ class Scenario:
     """A load-test scenario."""
 
     host: str
+    name: str = "RFUser"
+    weight: int = 1
+    fixed_count: int = 0
     wait_min: float = 1.0
     wait_max: float = 3.0
     on_start: str = ""

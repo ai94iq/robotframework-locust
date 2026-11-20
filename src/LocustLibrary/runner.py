@@ -59,6 +59,8 @@ def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
     attrs: dict[str, Any] = {
         "host": scenario.host,
         "tasks": tasks,
+        "weight": scenario.weight,
+        "fixed_count": scenario.fixed_count,
         "abstract": False,
         "wait_time": between(scenario.wait_min, scenario.wait_max),
     }
@@ -66,7 +68,7 @@ def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
         attrs["on_start"] = _keyword_method(scenario.on_start)
     if scenario.on_stop:
         attrs["on_stop"] = _keyword_method(scenario.on_stop)
-    return type("RFUser", (HttpUser,), attrs)
+    return type(scenario.name, (HttpUser,), attrs)
 
 
 _PATCHED = {"done": False}
@@ -122,18 +124,17 @@ def _stats_from_env(env: Any) -> Stats:
     return stats
 
 
-def run_load_test(scenario: Scenario, config: RunConfig) -> Stats:
+def _build_class(scenario: Scenario) -> type:
+    weighted: list[Any] = []
+    for task in scenario.tasks:
+        weighted.extend([_make_task_fn(task)] * max(1, task.weight))
+    return _user_class(scenario, weighted)
+
+
+def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
     """Run a load test headless and return parsed stats."""
     _patch_gevent()
-
-    task_fns = [_make_task_fn(t) for t in scenario.tasks]
-    weighted: list[Any] = []
-    for task, fn in zip(scenario.tasks, task_fns, strict=True):
-        weighted.extend([fn] * max(1, task.weight))
-
-    user_class = _user_class(scenario, weighted)
-
-    env = Environment(user_classes=[user_class])
+    env = Environment(user_classes=[_build_class(s) for s in scenarios])
     runner = env.create_local_runner()
 
     runner.start(user_count=config.users, spawn_rate=config.spawn_rate)
