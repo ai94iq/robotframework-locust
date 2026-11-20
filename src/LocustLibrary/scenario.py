@@ -1,5 +1,6 @@
 """Scenario data shapes for LocustLibrary."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -19,6 +20,7 @@ class Task:
     expected: tuple[int, ...] = (200,)
     keyword_name: str = ""
     keyword_args: tuple[Any, ...] = field(default_factory=tuple)
+    function: Callable[[Any], None] | None = None
 
 
 @dataclass

@@ -1,6 +1,9 @@
 """Robot Framework library for authoring and running Locust load tests in RF syntax."""
 
+import importlib
 import subprocess
+from collections.abc import Callable
+from typing import Any, cast
 
 from robot.api import logger
 from robot.api.deco import keyword
@@ -50,6 +53,16 @@ def _stage(text: str) -> Stage:
     if stage.users < 0 or stage.seconds <= 0:
         raise ValueError(f"bad stage {text!r}: users and duration must be positive")
     return stage
+
+
+def _python_function(target: str) -> Callable[[Any], None]:
+    module_name, _, attr = target.rpartition(".")
+    if not module_name:
+        raise ValueError(f"use module.function, got {target!r}")
+    function = getattr(importlib.import_module(module_name), attr, None)
+    if not callable(function):
+        raise TypeError(f"{module_name} has no function {attr!r}")
+    return cast("Callable[[Any], None]", function)
 
 
 def _keyword_name(name: str) -> str:
@@ -156,6 +169,19 @@ class LocustLibrary:
             raise RuntimeError("Call Create Load Test first.")
         self._scenario.tasks.append(
             Task(name=name, kind="rf", weight=weight, keyword_name=_keyword_name(keyword))
+        )
+
+    @keyword
+    def add_python_task(self, name: str, function: str, weight: int = 1) -> None:
+        """Add a Python task: `module.function` called with the Locust user.
+
+        Requests made through `user.client` show as their own stats rows, so a
+        multi-step flow (register, read OTP, verify) is measured per request.
+        """
+        if self._scenario is None:
+            raise RuntimeError("Call Create Load Test first.")
+        self._scenario.tasks.append(
+            Task(name=name, kind="py", weight=weight, function=_python_function(function))
         )
 
     @keyword

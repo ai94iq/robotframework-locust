@@ -62,6 +62,8 @@ def _make_task_fn(task: Task, budget: Budget | None = None) -> Callable[[Any], N
             _measure_keyword(user, task.keyword_name)
         elif task.kind == "http":
             _run_http(user, task)
+        elif task.kind == "py" and task.function is not None:
+            task.function(user)
         if budget is not None:
             budget.spend()
 
