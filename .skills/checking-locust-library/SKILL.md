@@ -20,7 +20,7 @@ the loopback flags, the worker dial address, the gevent patch, the blank
 keyword check, or `BuiltIn.run_keyword`. A broad `except` that only passes
 or returns fails too, as does a test that starts Locust, including through
 `os.system`. A comment that names a public host does not. CI runs the hook
-on every pull request.
+on every published release, not on push.
 
 `pytest` fails under 80% coverage of `src/LocustLibrary`.
 `src/LocustLibrary/studio/` is omitted from that gate. Do not lower
