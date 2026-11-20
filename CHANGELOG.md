@@ -2,6 +2,14 @@
 
 ## 0.1.0 (unreleased)
 
+- The Locust HTML report from Export Report now has its charts. Run Load Test
+  starts Locust's per-second history recorder, which only Locust's own command
+  line started before, so the charts were empty.
+- The log's stats table uses the columns of Locust's statistics table and adds
+  Average, Min and Failures/s. Stats rows now carry the real failures per
+  second instead of 0.
+- Each logged call shows the time it was sent and the full URL on the
+  response line, and long headers and bodies wrap.
 - Run Load Test logs a stats table per request name instead of the raw stats
   line. It also logs the first 3 calls of each request name and up to 50
   failed calls, in RequestsLibrary style: request and response URL, headers

@@ -1,5 +1,6 @@
 """The request log keeps a sample per name and the failures, with secrets masked."""
 
+import time
 from types import SimpleNamespace
 from typing import Any
 
@@ -10,7 +11,7 @@ def _response(status: int = 201, body: Any = '{"password": "p", "user": "a"}',
               text: str = '{"access_token": "t", "id": 7}') -> Any:
     request = SimpleNamespace(method="POST", url="https://h/v1/x", path_url="/v1/x",
                               headers={"Authorization": "Bearer t", "Accept": "*/*"}, body=body)
-    return SimpleNamespace(request=request, url="https://h/v1/x", status_code=status,
+    return SimpleNamespace(request=request, url="register", status_code=status,
                            reason="Created", headers={"Set-Cookie": "s=1"}, text=text)
 
 
@@ -31,10 +32,14 @@ def test_keeps_failures_up_to_fifty() -> None:
 
 def test_block_reads_like_requests_library() -> None:
     log = CallLog()
-    log.record(request_type="POST", name="register", response_time=410.4, response=_response())
+    log.record(request_type="POST", name="register", response_time=410.4, response=_response(),
+               start_time=0.0)
     block = log.entries[0]
-    assert block.startswith("<details><summary>POST register 201 410 ms</summary><pre>")
+    sent = time.strftime("%H:%M:%S", time.localtime(0.0))
+    assert block.startswith(f"<details><summary>{sent} POST register 201 410 ms</summary><pre style=")
+    assert "white-space:pre-wrap" in block
     assert "POST Request : url=https://h/v1/x" in block
+    assert "POST Response : url=https://h/v1/x" in block
     assert "status=201, reason=Created" in block
     assert "Bearer" not in block
     assert "&quot;p&quot;" not in block and "&quot;t&quot;" not in block

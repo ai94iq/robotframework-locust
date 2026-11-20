@@ -6,6 +6,7 @@ failed ones. Secrets in headers and bodies are masked before anything is kept.
 
 import html
 import json
+import time
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import parse_qsl, urlencode
@@ -16,6 +17,7 @@ _LIMIT = 10000
 _MASK = "***"
 _SECRET_HEADERS = {"authorization", "proxy-authorization", "cookie", "set-cookie"}
 _SECRET_FIELDS = {"password", "client_secret", "access_token", "refresh_token", "id_token", "otp"}
+_PRE = "white-space:pre-wrap;word-break:break-all"
 
 
 @dataclass
@@ -28,11 +30,14 @@ class CallLog:
     _failed: int = 0
 
     def record(self, request_type: str, name: str, response_time: float,
-               response: Any = None, exception: Any = None, **_event: Any) -> None:
+               response: Any = None, exception: Any = None, start_time: float | None = None,
+               **_event: Any) -> None:
         if not self._wanted(name, exception is not None):
             self.left_out += 1
             return
-        self.entries.append(_block(f"{request_type} {name}", response_time, response, exception))
+        sent = time.localtime(start_time) if start_time is not None else time.localtime()
+        call = f"{time.strftime('%H:%M:%S', sent)} {request_type} {name}"
+        self.entries.append(_block(call, response_time, response, exception))
 
     def _wanted(self, name: str, failed: bool) -> bool:
         seen = self._seen.get(name, 0)
@@ -52,7 +57,7 @@ def _block(call: str, response_time: float, response: Any, exception: Any) -> st
         summary += f" FAILED: {exception}"
     text = _exchange(response) if response is not None else "no HTTP response recorded"
     return (f"<details><summary>{html.escape(summary)}</summary>"
-            f"<pre>{html.escape(text)}</pre></details>")
+            f'<pre style="{_PRE}">{html.escape(text)}</pre></details>')
 
 
 def _exchange(response: Any) -> str:
@@ -64,7 +69,7 @@ def _exchange(response: Any) -> str:
         f"headers={mask_headers(request.headers)}",
         f"body={mask_body(request.body)}",
         "",
-        f"{method} Response : url={response.url}",
+        f"{method} Response : url={request.url}",
         f"status={response.status_code}, reason={response.reason}",
         f"headers={mask_headers(response.headers)}",
         f"body={mask_body(response.text)}",

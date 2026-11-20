@@ -1,5 +1,6 @@
 """Ramp stages and an iteration budget, as k6 runs them."""
 
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -109,6 +110,7 @@ def test_run_uses_shape_when_staged(monkeypatch, config: RunConfig, expected: li
     started: list[str] = []
     monkeypatch.setattr(runner, "_patch_gevent", lambda: None)
     monkeypatch.setattr(runner, "_observe", lambda _env: CallLog())
+    monkeypatch.setattr(runner, "_start_history", lambda _r: SimpleNamespace(kill=lambda **_k: None))
     monkeypatch.setattr(runner, "_finish", lambda _env, _calls: Stats())
     monkeypatch.setattr(runner, "Environment", _fake_env(started))
     monkeypatch.setattr(runner.time, "sleep", lambda _s: None)

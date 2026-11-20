@@ -6,9 +6,11 @@ import warnings
 from collections.abc import Callable
 from typing import Any
 
+import gevent
 from locust import HttpUser, between
 from locust.env import Environment
 from locust.exception import StopUser
+from locust.stats import stats_history
 from urllib3.exceptions import InsecureRequestWarning
 
 from .calllog import CallLog
@@ -148,7 +150,7 @@ def _row_from_entry(name: str, entry: object) -> StatsRow:
         min=float(getattr(entry, "min_response_time", 0.0)),
         max=float(getattr(entry, "max_response_time", 0.0)),
         rps=float(getattr(entry, "total_rps", 0.0)),
-        failures_s=0.0,
+        failures_s=float(getattr(entry, "total_fail_per_sec", 0.0)),
         p50=_pct(entry, 0.5),
         p90=_pct(entry, 0.9),
         p95=_pct(entry, 0.95),
@@ -194,6 +196,7 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
                       shape_class=shape)
     calls = _observe(env)
     runner = env.create_local_runner()
+    history = _start_history(runner)
     # One warning per call drowns the log; the library logs one line per host instead.
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", InsecureRequestWarning)
@@ -206,7 +209,13 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
         _wait_until(seconds, budget)
         runner.quit()
         runner.greenlet.join(timeout=10)
+    history.kill(block=False)
     return _finish(env, calls)
+
+
+def _start_history(local: Any) -> Any:
+    # Locust fills the report charts from this history; only its own CLI starts the recorder.
+    return gevent.spawn(stats_history, local)
 
 
 def _observe(env: Any) -> CallLog:

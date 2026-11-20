@@ -29,10 +29,18 @@ def _messages(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str, bool]]:
     return seen
 
 
-def test_table_has_a_row_per_name() -> None:
+def test_table_uses_locust_columns() -> None:
     table = stats_table_html(_stats())
-    assert "<td>&lt;i&gt;login&lt;/i&gt;</td><td>207</td><td>1</td><td>680</td><td>1100</td>" in table
-    assert "<td>Aggregated</td>" in table and "<td>0.44</td>" in table
+    assert ">Name</th>" in table and "># Requests</th>" in table and ">95%ile (ms)</th>" in table
+    assert ">Current RPS</th>" in table and ">Failures/s</th>" in table
+    assert "&lt;i&gt;login&lt;/i&gt;" in table and "<i>" not in table
+    assert ">207</td>" in table and ">1100</td>" in table and ">0.44</td>" in table
+
+
+def test_failures_show_red_and_total_row_bold() -> None:
+    table = stats_table_html(_stats())
+    assert 'color:#f64e56">1</td>' in table
+    assert 'font-weight:bold' in table.split("Aggregated")[0].rsplit("<tr", 1)[1]
 
 
 def test_run_logs_table_calls_and_tls(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -75,6 +83,14 @@ def test_observe_listens_on_request_events() -> None:
     env = SimpleNamespace(events=SimpleNamespace(request=SimpleNamespace(add_listener=added.append)))
     calls = runner._observe(env)
     assert added == [calls.record]
+
+
+def test_history_recorder_is_started(monkeypatch: pytest.MonkeyPatch) -> None:
+    spawned: list[Any] = []
+    monkeypatch.setattr(runner.gevent, "spawn", lambda fn, arg: spawned.append((fn, arg)) or "g")
+    local = object()
+    assert runner._start_history(local) == "g"
+    assert spawned == [(runner.stats_history, local)]
 
 
 def test_finish_adds_calls_and_report(monkeypatch: pytest.MonkeyPatch) -> None:

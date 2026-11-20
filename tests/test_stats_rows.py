@@ -13,3 +13,12 @@ def test_rows_are_named_after_the_request() -> None:
     stats.log_request("POST", "login", 30, 10)
     rows = _stats_from_env(types.SimpleNamespace(stats=stats)).rows
     assert sorted(r.name for r in rows) == ["home", "login"]
+
+
+def test_rows_carry_failures_per_second() -> None:
+    stats = RequestStats()
+    stats.log_request("POST", "login", 30, 10)
+    stats.log_error("POST", "login", "500")
+    (row,) = _stats_from_env(types.SimpleNamespace(stats=stats)).rows
+    assert row.failures_s == stats.get("login", "POST").total_fail_per_sec
+    assert row.failures_s > 0

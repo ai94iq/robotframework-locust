@@ -2,6 +2,7 @@
 
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from locust.env import Environment
@@ -131,6 +132,7 @@ def test_http_task_and_short_run(monkeypatch) -> None:
 
     monkeypatch.setattr("LocustLibrary.runner._patch_gevent", lambda: None)
     monkeypatch.setattr("LocustLibrary.runner._observe", lambda _env: CallLog())
+    monkeypatch.setattr("LocustLibrary.runner._start_history", lambda _r: SimpleNamespace(kill=lambda **_k: None))
     monkeypatch.setattr("LocustLibrary.runner._finish", lambda _env, _calls: Stats())
     monkeypatch.setattr("LocustLibrary.runner.time.sleep", lambda _seconds: None)
     monkeypatch.setattr(
