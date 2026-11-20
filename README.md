@@ -11,7 +11,7 @@ and `rflocust-k6` turns a k6 script into a Robot project.
 Site and keyword reference: `docs/index.html` and `docs/keywords.html`,
 served as the repo's GitHub page.
 
-![Locust Studio after a 20-user run](https://github.com/ai94iq/robotframework-locust/blob/main/docs/screenshots/studio-run.png)
+![Locust Studio after a 20-user run](https://raw.githubusercontent.com/ai94iq/robotframework-locust/main/docs/screenshots/studio-run.png)
 
 ## Contents
 
@@ -82,7 +82,7 @@ When the run ends, the Report tab opens the Robot log and the Locust report.
 Studio has a dark and a light theme and runs on Windows and Linux. See
 [docs/studio.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/studio.md).
 
-![The Studio Run tab in the dark theme, during a run](https://github.com/ai94iq/robotframework-locust/blob/main/docs/screenshots/studio-run-graphite.png)
+![The Studio Run tab in the dark theme, during a run](https://raw.githubusercontent.com/ai94iq/robotframework-locust/main/docs/screenshots/studio-run-graphite.png)
 
 ## Convert a k6 script
 
