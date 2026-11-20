@@ -1,5 +1,6 @@
 """Run a load suite under Robot for Studio and follow its feed and console output."""
 
+import importlib.util
 import os
 import subprocess
 import sys
@@ -9,14 +10,24 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from gevent import monkey
-
 from LocustLibrary import feed
 
 _ROBOT_PAGES = {"log.html", "report.html"}
-# Importing Locust swaps in gevent's subprocess, which needs gevent's thread pool and fails
-# outside a gevent loop; Studio starts Robot with the standard one.
-_popen = monkey.get_original("subprocess", "Popen")
+
+
+def _stdlib_popen() -> Any:
+    # Importing Locust swaps in gevent's subprocess, which needs a gevent loop, and on POSIX
+    # blanks the module's fork_exec that the original Popen calls. A private copy of the
+    # standard module keeps both.
+    spec = importlib.util.find_spec("subprocess")
+    if spec is None or spec.loader is None:
+        raise ImportError("standard subprocess module not found")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.Popen
+
+
+_popen = _stdlib_popen()
 
 
 @dataclass
@@ -81,18 +92,29 @@ def robot_command(suite: str, outdir: Path) -> list[str]:
             "--consolewidth", "100", suite]
 
 
-def _low_priority() -> dict[str, Any]:
+# Under gevent a POSIX child started with cwd or preexec_fn hangs before exec, so it moves into
+# the suite folder itself.
+_CHDIR_EXEC = "import os, sys; os.chdir(sys.argv[1]); os.execv(sys.argv[2], sys.argv[2:])"
+
+
+def _spawn(command: list[str], cwd: str) -> tuple[list[str], dict[str, Any]]:
     # A load run should never slow the desktop it is watched from.
     if sys.platform == "win32":
-        return {"creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS}
-    return {"preexec_fn": lambda: os.nice(10)}
+        return command, {"cwd": cwd, "creationflags": subprocess.BELOW_NORMAL_PRIORITY_CLASS}
+    return [sys.executable, "-c", _CHDIR_EXEC, cwd, *command], {}
+
+
+def _lower_priority(pid: int) -> None:
+    if sys.platform != "win32":
+        os.setpriority(os.PRIO_PROCESS, pid, os.getpriority(os.PRIO_PROCESS, 0) + 10)
 
 
 def start_suite(suite: str) -> SuiteRun:
     outdir = Path(tempfile.mkdtemp(prefix="locust-studio-"))
     env = {**os.environ, feed.ENV: str(outdir / "feed.jsonl"), "PYTHONUNBUFFERED": "1"}
+    command, options = _spawn(robot_command(suite, outdir), str(Path(suite).parent))
     with (outdir / "console.txt").open("wb") as console:
-        process = _popen(robot_command(suite, outdir), stdout=console,
-               stderr=subprocess.STDOUT, env=env, shell=False,
-               cwd=str(Path(suite).parent), **_low_priority())
+        process = _popen(command, stdout=console, stderr=subprocess.STDOUT, env=env, shell=False,
+                         **options)
+    _lower_priority(process.pid)
     return SuiteRun(process, outdir)

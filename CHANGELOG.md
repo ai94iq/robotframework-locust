@@ -2,6 +2,15 @@
 
 ## 0.1.0 (unreleased)
 
+- Locust Studio runs a suite on Linux. Run crashed there with a TypeError:
+  importing Locust lets gevent blank the fork call of the standard
+  subprocess module, and a child started with a working folder or a
+  preexec function hung. Studio now starts Robot from its own copy of the
+  module, moves the child into the suite folder itself, and lowers its
+  priority once it has started.
+- The live feed no longer stops in the first second of a run. Locust keeps
+  no minimum response time before the first request, and reading it raised
+  a TypeError, so the charts stayed empty until the end.
 - Locust Studio has a new look: Graphite (dark, default) and Paper (light)
   replace Dark Console, Clean Light, Neon Dark and High Contrast. One header
   row holds the tabs, the run status and the Run and Stop buttons. Numbers in

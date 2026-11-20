@@ -1,9 +1,14 @@
 """Studio runs a suite under Robot and follows its feed and console."""
 
 import json
+import os
 import sys
+import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+
+import pytest
 
 from LocustLibrary import feed
 from LocustLibrary.studio import live
@@ -46,13 +51,34 @@ def test_reports_found_beside_the_log(tmp_path: Path) -> None:
 def test_start_sets_the_feed_and_low_priority(monkeypatch: Any, tmp_path: Path) -> None:
     seen: dict[str, Any] = {}
 
-    def fake_popen(cmd: list[str], **kwargs: Any) -> str:
+    def fake_popen(cmd: list[str], **kwargs: Any) -> Any:
         seen.update(kwargs, cmd=cmd)
-        return "proc"
+        return proc
 
+    proc = SimpleNamespace(pid=4321)
     monkeypatch.setattr(live, "_popen", fake_popen)
+    monkeypatch.setattr(live, "_lower_priority", lambda pid: seen.update(lowered=pid))
     monkeypatch.setattr(live.tempfile, "mkdtemp", lambda prefix: str(tmp_path))
     run = live.start_suite(str(tmp_path / "load.robot"))
-    assert run.process == "proc" and seen["env"][feed.ENV] == str(tmp_path / "feed.jsonl")
-    assert seen["cwd"] == str(tmp_path) and seen["shell"] is False
-    assert ("creationflags" in seen) == (sys.platform == "win32")
+    assert run.process is proc and seen["lowered"] == 4321 and seen["env"][feed.ENV] == str(tmp_path / "feed.jsonl")
+    assert seen["shell"] is False
+    if sys.platform == "win32":
+        assert seen["cwd"] == str(tmp_path) and "creationflags" in seen
+    else:
+        assert seen["cmd"][3] == str(tmp_path) and "cwd" not in seen
+
+
+# Studio crashed on Run on Linux: gevent blanks subprocess._fork_exec, and a preexec_fn hangs.
+def test_suite_starts_below_studio(monkeypatch: Any, tmp_path: Path) -> None:
+    if sys.platform == "win32":
+        pytest.skip("POSIX launcher path")
+    report_nice = "import os, time; time.sleep(1); print(os.nice(0), os.getcwd())"
+    monkeypatch.setattr(live, "robot_command", lambda suite, outdir: [sys.executable, "-c", report_nice])
+    monkeypatch.setattr(live.tempfile, "mkdtemp", lambda prefix: str(tmp_path))
+    run = live.start_suite(str(tmp_path / "load.robot"))
+    end = time.monotonic() + 30
+    while run.process.poll() is None and time.monotonic() < end:
+        time.sleep(0.1)
+    assert run.process.returncode == 0
+    child_nice, child_cwd = (tmp_path / "console.txt").read_text(encoding="utf-8").split()
+    assert (int(child_nice), child_cwd) == (min(os.nice(0) + 10, 19), str(tmp_path))
