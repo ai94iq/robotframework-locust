@@ -17,6 +17,7 @@ from .reporting import write_html_report
 from .scenario import RunConfig, Scenario, Stats
 from .shape import StageShape
 from .stats import _stats_from_env
+from .stoprules import RuleWatch
 from .users import Budget, build_class
 
 _PATCHED = {"done": False}
@@ -78,14 +79,19 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
         else:
             runner.start_shape()
             seconds = shape.total
-        stopped = _wait_until(seconds, budget, fail_breaker(
-            runner, config.stop_on_fail_ratio, config.fail_ratio_warmup))
+        watch = RuleWatch(config.stop_rules, runner)
+        stopped = _wait_until(seconds, budget, _first_reason(
+            fail_breaker(runner, config.stop_on_fail_ratio, config.fail_ratio_warmup), watch.check))
         runner.quit()
         runner.greenlet.join(timeout=10)
     history.kill(block=False)
     stats = _finish(env, calls)
-    stats.stopped = stopped
+    stats.stopped, stats.stop_failed = stopped, watch.failed
     return stats
+
+
+def _first_reason(*checks: Callable[[float], str]) -> Callable[[float], str]:
+    return lambda elapsed: next((r for check in checks if (r := check(elapsed))), "")
 
 
 def _start_history(local: Any) -> Any:

@@ -94,6 +94,7 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 | Create Load Test | host, verify_tls=True, proxy=, allowed_hosts= | Starts a scenario. The host is an http or https URL with no user name or password. If an allowlist is set, the host name must be on it. |
 | Add User Class | name, weight=1, fixed_count=0 | Starts a user class. Later tasks and waits belong to it. |
 | Set Wait Time | minimum, maximum | Think time between tasks. |
+| Add Stop Rule | rule | Stops the run once the rule holds for its whole window, such as `p95 > 1s for 10s` or `rc5?? > 20% for 5s, stop as passed`. See Safety limits. |
 | Set Load Stages | *stages | Ramps users over `duration:users` stages, such as `2m:20`. With stages, Run Load Test ignores users, spawn rate and run time. |
 | Add Get Request | name, path, weight=1, expected_status=200, headers=, expected_text= | Adds a GET task. Only the listed status codes pass. With expected_text, the body must also contain that text. |
 | Add Post Request | name, path, weight=1, expected_status=200, headers=, json=, data=, expected_text= | Adds a POST task with a JSON or form body. With expected_text, the body must also contain that text. |
@@ -139,6 +140,16 @@ Read these before you run a test against a host you do not own.
   stops the run when the share of failed requests goes over it. The check
   starts after `fail_ratio_warmup` (default 10s) and runs every half second.
   The log shows the reason as a warning. The default 0 turns it off.
+- **Stop rules.** `Add Stop Rule    p95 > 1s for 10s` stops the run once the
+  value stays over the limit for the whole window, checked every half second.
+  Metrics: `pN` (Locust's current response time percentile, `ms` or `s`),
+  `fail` (share of failed requests), `rcNNN` (share of responses whose code
+  matches; `?` and `*` match digits), and `cpu` and `mem` (the load
+  machine, so an overloaded generator stops the run instead of skewing it).
+  `fail` and `rc` count only the requests since the last check; a check with
+  no responses leaves the window as it is. By default a rule fails Run Load
+  Test; end it with `, stop as passed` to only stop. The syntax follows
+  Taurus pass/fail criteria.
 - **Body check.** A server can answer 200 with an error page. Pass
   `expected_text` to Add Get Request or Add Post Request, and a response
   without that text counts as a failure.

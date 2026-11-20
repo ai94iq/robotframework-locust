@@ -74,6 +74,20 @@ class BuildKeywords:
         self._scenario.wait_max = _parse_seconds(maximum)
 
     @keyword
+    def add_stop_rule(self, rule: str) -> None:
+        """Stop the run once `rule` holds for its whole window, like `p95 > 1s for 10s`.
+
+        Metrics: `pN` (Locust's last 10 s window), `fail` and `rcNNN` (`?` and `*` match a
+        digit; share since the last check), `cpu` and `mem` (load machine). End with
+        `, stop as passed` to stop without failing; the default fails Run Load Test.
+        """
+        from .stoprules import parse_rule
+
+        if self._config is None:
+            raise RuntimeError("Call Create Load Test first.")
+        self._config.stop_rules.append(parse_rule(rule))
+
+    @keyword
     def add_get_request(self, name: str, path: str, weight: int = 1,
                         expected_status: object = 200,
                         headers: dict[str, str] | None = None,

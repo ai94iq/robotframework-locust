@@ -2,6 +2,11 @@
 
 ## 0.1.0 (unreleased)
 
+- New keyword Add Stop Rule stops a run once a value stays past its limit for
+  a whole window, such as `p95 > 1s for 10s`, `fail > 50% for 5s` or
+  `rc5?? > 20% for 5s`. `cpu` and `mem` rules watch the load machine. A rule
+  fails Run Load Test unless it ends with `, stop as passed`. The syntax follows
+  Taurus pass/fail criteria.
 - The Locust Studio sidebar shows the real host of a suite whose host comes
   from a resource file, such as `${HOST}`. Studio reads the suite with a
   Robot dry run, which passes keyword arguments as written; the plan now

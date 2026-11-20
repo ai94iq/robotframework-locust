@@ -13,6 +13,11 @@ All sources, papers, and documentation referenced during the design and research
 - Locust source (stats): https://docs.locust.io/en/latest/_modules/locust/stats.html
 - Locust GitHub: https://github.com/locustio/locust
 
+## Taurus
+
+- Pass/fail criteria (source of the Add Stop Rule syntax): https://github.com/Blazemeter/taurus/blob/master/site/dat/docs/PassFail.md
+- Monitoring-based criteria (cpu and mem rules): https://github.com/Blazemeter/taurus/blob/master/site/dat/docs/Monitoring.md
+
 ## Robot Framework
 
 - RF User Guide (creating test libraries): https://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html

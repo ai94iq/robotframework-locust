@@ -65,6 +65,8 @@ class LocustLibrary(BuildKeywords, CheckKeywords):
         if self._stats.cpu_busy:
             logger.warn("Load generator CPU went over 90%; response times may be too high")
         self._log_run(self._stats)
+        if self._stats.stop_failed:
+            raise AssertionError(f"Load test {self._stats.stopped}")
 
     def _log_run(self, stats: Stats) -> None:
         from .reporting import stats_table_html

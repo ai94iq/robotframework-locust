@@ -4,6 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from .stoprules import StopRule
+
 
 @dataclass
 class Task:
@@ -60,6 +62,7 @@ class RunConfig:
     iterations: int = 0
     stop_on_fail_ratio: float = 0.0
     fail_ratio_warmup: float = 10.0
+    stop_rules: list[StopRule] = field(default_factory=list)
 
 
 @dataclass
@@ -94,4 +97,5 @@ class Stats:
     left_out: int = 0
     report_html: str = field(default="", repr=False)
     stopped: str = ""
+    stop_failed: bool = False
     cpu_busy: bool = False
