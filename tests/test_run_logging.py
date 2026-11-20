@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 import LocustLibrary as lib_module
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, checks, runner
 from LocustLibrary.calllog import CallLog
 from LocustLibrary.reporting import stats_table_html
 from LocustLibrary.scenario import Stats, StatsRow
@@ -26,6 +26,7 @@ def _messages(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, str, bool]]:
         info=lambda msg, html=False: seen.append(("INFO", msg, html)),
         warn=lambda msg, html=False: seen.append(("WARN", msg, html)))
     monkeypatch.setattr(lib_module, "logger", fake)
+    monkeypatch.setattr(checks, "logger", fake)
     return seen
 
 
@@ -66,7 +67,7 @@ def test_csv_prefix_is_gone() -> None:
 
 def test_export_writes_csv_and_linked_html(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     seen = _messages(monkeypatch)
-    monkeypatch.setattr(lib_module, "_output_dir", lambda: str(tmp_path))
+    monkeypatch.setattr(checks, "_output_dir", lambda: str(tmp_path))
     lib = LocustLibrary()
     lib._stats = _stats()
     base = lib.export_report("combined")
@@ -77,7 +78,7 @@ def test_export_writes_csv_and_linked_html(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 def test_output_dir_outside_robot_is_cwd() -> None:
-    assert lib_module._output_dir() is None
+    assert checks._output_dir() is None
 
 
 def test_observe_listens_on_request_events() -> None:

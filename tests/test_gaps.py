@@ -12,12 +12,12 @@ from LocustLibrary.calllog import CallLog
 from LocustLibrary.distributed import _stop_one
 from LocustLibrary.reporting import write_csv_report, write_html_report
 from LocustLibrary.runner import (
-    _make_task_fn,
     _parse_time,
     _row_from_entry,
     run_load_test,
 )
 from LocustLibrary.scenario import RunConfig, Scenario, Stats, Task
+from LocustLibrary.users import _make_task_fn
 from LocustLibrary.validation import sanitize_prefix, validate_locustfile
 from LocustLibrary.webui import start_web_ui
 

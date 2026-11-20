@@ -3,7 +3,7 @@
 import pytest
 from locust.event import EventHook
 
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, users
 from LocustLibrary.scenario import Scenario, Task
 
 
@@ -23,23 +23,23 @@ def _user(hook: EventHook) -> object:
 
 def test_rf_task_runs_the_keyword(monkeypatch) -> None:
     seen: list[str] = []
-    monkeypatch.setattr(runner, "_call_keyword", seen.append)
+    monkeypatch.setattr(users, "_call_keyword", seen.append)
     hook = EventHook()
     fired: list[str] = []
     hook.add_listener(lambda **kw: fired.append(kw["name"]))
     task = Task(name="login", kind="rf", keyword_name="Login")
-    runner._make_task_fn(task)(_user(hook))
+    users._make_task_fn(task)(_user(hook))
     assert seen == ["Login"]
     assert fired == ["Login"]
 
 
 def test_lifecycle_keywords_run(monkeypatch) -> None:
     seen: list[str] = []
-    monkeypatch.setattr(runner, "_call_keyword", seen.append)
+    monkeypatch.setattr(users, "_call_keyword", seen.append)
     scenario = Scenario(
         host="http://127.0.0.1", on_start="Open", on_stop="Close"
     )
-    user_cls = runner._user_class(scenario, [])
+    user_cls = users._user_class(scenario, [])
     hook = EventHook()
     user = _user(hook)
     user_cls.on_start(user)
@@ -70,5 +70,5 @@ def test_call_keyword_uses_builtin(monkeypatch) -> None:
             seen.append(name)
 
     monkeypatch.setattr("robot.libraries.BuiltIn.BuiltIn", FakeBuiltIn)
-    runner._call_keyword("Login")
+    users._call_keyword("Login")
     assert seen == ["Login"]

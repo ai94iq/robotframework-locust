@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 
 import LocustLibrary as lib_module
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, runner, users
 from LocustLibrary.calllog import CallLog
 from LocustLibrary.scenario import RunConfig, Scenario, Stats
 
@@ -46,7 +46,7 @@ def test_class_needs_a_load_test() -> None:
 
 def test_class_carries_weight_and_count() -> None:
     scenario = Scenario(host="http://127.0.0.1", name="token", weight=6, fixed_count=2)
-    user_cls = runner._user_class(scenario, [])
+    user_cls = users._user_class(scenario, [])
     assert (user_cls.__name__, user_cls.weight, user_cls.fixed_count) == ("token", 6, 2)
 
 

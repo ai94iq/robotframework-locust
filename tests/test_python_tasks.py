@@ -5,7 +5,7 @@ import types
 
 import pytest
 
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, users
 from LocustLibrary.scenario import Task
 
 
@@ -25,7 +25,7 @@ def test_python_task_gets_the_user(flows: types.ModuleType) -> None:
     lib.add_python_task("register", "iam_flows.register", weight=8)
     task = lib._scenario.tasks[0] if lib._scenario else Task(name="")
     user = object()
-    runner._make_task_fn(task)(user)
+    users._make_task_fn(task)(user)
     assert flows.calls == [user]
     assert (task.kind, task.weight) == ("py", 8)
 

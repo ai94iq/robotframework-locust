@@ -5,7 +5,7 @@ from typing import Any, Self
 
 import pytest
 
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, runner, users
 from LocustLibrary.scenario import Stats, StatsRow, Task
 from LocustLibrary.validation import allowed_hosts, validate_host
 
@@ -56,7 +56,7 @@ def test_wait_stops_when_the_breaker_trips(monkeypatch: pytest.MonkeyPatch) -> N
     clock = iter(range(100))
     monkeypatch.setattr(runner.time, "monotonic", lambda: next(clock))
     monkeypatch.setattr(runner.time, "sleep", lambda _s: None)
-    reason = runner._wait_until(60, runner.Budget(0), lambda elapsed: "stop" if elapsed >= 3 else "")
+    reason = runner._wait_until(60, users.Budget(0), lambda elapsed: "stop" if elapsed >= 3 else "")
     assert reason == "stop" and next(clock) < 10
 
 
@@ -119,7 +119,7 @@ class _Response:
 def test_body_must_hold_the_expected_text(text: str, verdict: str) -> None:
     response = _Response(text)
     user = SimpleNamespace(client=SimpleNamespace(get=lambda *_a, **_k: response))
-    runner._run_http(user, Task(name="health", path="/health", expected_text="UP"))
+    users._run_http(user, Task(name="health", path="/health", expected_text="UP"))
     assert response.verdict == verdict
 
 

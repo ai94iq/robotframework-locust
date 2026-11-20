@@ -3,20 +3,20 @@
 import pytest
 from locust.env import Environment
 
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, users
 from LocustLibrary.scenario import Scenario, Stats, StatsRow
 
 
 def test_user_skips_tls_and_uses_proxy() -> None:
     scenario = Scenario(host="https://h", verify_tls=False, proxy="http://127.0.0.1:18081")
-    user = runner._user_class(scenario, [])(Environment())
+    user = users._user_class(scenario, [])(Environment())
     assert user.client.verify is False
     assert user.client.proxies == {"http": "http://127.0.0.1:18081",
                                    "https": "http://127.0.0.1:18081"}
 
 
 def test_user_verifies_tls_by_default() -> None:
-    user = runner._user_class(Scenario(host="https://h"), [])(Environment())
+    user = users._user_class(Scenario(host="https://h"), [])(Environment())
     assert user.client.verify is True
     assert user.client.proxies == {}
 

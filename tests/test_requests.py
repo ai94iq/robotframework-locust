@@ -4,7 +4,7 @@ from typing import Any, Self
 
 import pytest
 
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, users
 from LocustLibrary.scenario import Task
 
 
@@ -47,7 +47,7 @@ def _user(status: int) -> Any:
 def test_status_is_judged_against_accepted(status: int, verdict: str) -> None:
     user = _user(status)
     task = Task(name="create", method="POST", path="/x", expected=(201, 409))
-    runner._run_http(user, task)
+    users._run_http(user, task)
     assert user.client.response.verdict.startswith(verdict)
 
 
@@ -55,7 +55,7 @@ def test_headers_and_json_body_are_sent() -> None:
     user = _user(200)
     task = Task(name="save", method="POST", path="/x",
                 headers={"Authorization": "Bearer t"}, json={"a": 1})
-    runner._run_http(user, task)
+    users._run_http(user, task)
     path, kwargs = user.client.calls[0]
     assert path == "/x"
     assert kwargs["headers"] == {"Authorization": "Bearer t"}

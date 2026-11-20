@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from locust.exception import StopUser
 
-from LocustLibrary import LocustLibrary, runner
+from LocustLibrary import LocustLibrary, runner, users
 from LocustLibrary.calllog import CallLog
 from LocustLibrary.scenario import RunConfig, Scenario, Stats, Task
 from LocustLibrary.shape import Stage, StageShape
@@ -55,9 +55,9 @@ def test_stages_need_a_load_test() -> None:
 
 def test_budget_stops_users_after_n_tasks(monkeypatch) -> None:
     seen: list[str] = []
-    monkeypatch.setattr(runner, "_call_keyword", seen.append)
-    budget = runner.Budget(2)
-    task_fn = runner._make_task_fn(Task(name="t", kind="rf", keyword_name="K"), budget)
+    monkeypatch.setattr(users, "_call_keyword", seen.append)
+    budget = users.Budget(2)
+    task_fn = users._make_task_fn(Task(name="t", kind="rf", keyword_name="K"), budget)
 
     class User:
         environment = type("E", (), {"events": type("V", (), {"request": _hook()})()})()
@@ -71,7 +71,7 @@ def test_budget_stops_users_after_n_tasks(monkeypatch) -> None:
 
 
 def test_no_budget_never_stops() -> None:
-    budget = runner.Budget(0)
+    budget = users.Budget(0)
     budget.spend()
     assert not budget.done
 
@@ -122,7 +122,7 @@ def test_run_ends_early_when_budget_spent(monkeypatch) -> None:
     clock = iter(range(100))
     monkeypatch.setattr(runner.time, "monotonic", lambda: next(clock))
     monkeypatch.setattr(runner.time, "sleep", lambda _s: None)
-    budget = runner.Budget(1)
+    budget = users.Budget(1)
     budget.spend()
     runner._wait_until(10, budget)
     assert next(clock) < 5
@@ -133,7 +133,7 @@ def test_run_waits_out_the_time_when_budget_left(monkeypatch) -> None:
     slept: list[float] = []
     monkeypatch.setattr(runner.time, "monotonic", lambda: next(clock))
     monkeypatch.setattr(runner.time, "sleep", slept.append)
-    runner._wait_until(2, runner.Budget(5))
+    runner._wait_until(2, users.Budget(5))
     assert slept == [0.5, 0.5]
 
 

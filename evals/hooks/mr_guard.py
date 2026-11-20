@@ -9,13 +9,18 @@ ROOT = Path(__file__).resolve().parents[2]
 _LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
 
 
+def _sources(root: Path, *names: str) -> str:
+    """The library is split across modules; the checks read them as one text."""
+    return "\n".join((root / f"src/LocustLibrary/{n}.py").read_text(encoding="utf-8") for n in names)
+
+
 def check(root: Path) -> list[str]:
     problems: list[str] = []
     problems.extend(coverage_problems((root / "pyproject.toml").read_text(encoding="utf-8")))
     problems.extend(spawn_problems((root / "src/LocustLibrary/distributed.py").read_text(encoding="utf-8")))
     problems.extend(web_problems((root / "src/LocustLibrary/webui.py").read_text(encoding="utf-8")))
-    runner = (root / "src/LocustLibrary/runner.py").read_text(encoding="utf-8")
-    library = (root / "src/LocustLibrary/__init__.py").read_text(encoding="utf-8")
+    runner = _sources(root, "runner", "users")
+    library = _sources(root, "__init__", "builder", "parsing")
     problems.extend(patch_problems(runner))
     problems.extend(time_problems(runner, "_parse_time"))
     problems.extend(time_problems(library, "_parse_seconds"))
