@@ -89,6 +89,7 @@ class LocustLibrary:
     def __init__(self) -> None:
         self._scenario: Scenario | None = None
         self._scenarios: list[Scenario] = []
+        self._default: Scenario | None = None
         self._config: RunConfig | None = None
         self._stats: Stats | None = None
         self._web_proc: subprocess.Popen[bytes] | None = None
@@ -107,6 +108,7 @@ class LocustLibrary:
         host = validate_host(host)
         self._scenario = Scenario(host=host, verify_tls=verify_tls, proxy=proxy)
         self._scenarios = [self._scenario]
+        self._default = self._scenario
         self._config = RunConfig()
         self._stats = None
 
@@ -123,6 +125,9 @@ class LocustLibrary:
         self._scenario = Scenario(host=current.host, name=name, weight=weight,
                                   fixed_count=fixed_count, verify_tls=current.verify_tls,
                                   proxy=current.proxy)
+        # The class Create Load Test made has no tasks yet; Locust refuses a class without tasks.
+        if current is self._default and len(self._scenarios) == 1 and not current.tasks:
+            self._scenarios = []
         self._scenarios.append(self._scenario)
 
     @keyword

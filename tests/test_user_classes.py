@@ -27,6 +27,16 @@ def test_requests_go_to_the_current_class(monkeypatch) -> None:
     assert second.host == first.host
 
 
+def test_first_class_replaces_the_empty_default() -> None:
+    lib = LocustLibrary()
+    lib.create_load_test("http://127.0.0.1", verify_tls=False)
+    lib.add_user_class("signup", weight=8)
+    lib.add_get_request("register", "/r")
+    lib.add_user_class("token", weight=6)
+    assert [(s.name, s.weight, s.verify_tls) for s in lib._scenarios] == [
+        ("signup", 8, False), ("token", 6, False)]
+
+
 def test_class_needs_a_load_test() -> None:
     with pytest.raises(RuntimeError, match="Create Load Test"):
         LocustLibrary().add_user_class("token")

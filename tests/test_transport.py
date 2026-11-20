@@ -25,6 +25,7 @@ def test_keyword_carries_tls_and_proxy_to_every_class() -> None:
     lib = LocustLibrary()
     lib.create_load_test("https://h", verify_tls=False, proxy="http://127.0.0.1:1")
     lib.add_user_class("token")
+    lib.add_user_class("signup")
     assert [(s.verify_tls, s.proxy) for s in lib._scenarios] == [(False, "http://127.0.0.1:1")] * 2
 
 
