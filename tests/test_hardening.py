@@ -126,7 +126,7 @@ def test_stats_copy_includes_p999() -> None:
 
     class Bag:
         def __init__(self) -> None:
-            self.entries = {("GET", "/"): Entry()}
+            self.entries = {("/", "GET"): Entry()}
             self.total = Entry()
 
     class Env:

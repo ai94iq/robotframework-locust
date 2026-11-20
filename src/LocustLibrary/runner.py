@@ -155,7 +155,7 @@ def _row_from_entry(name: str, entry: object) -> StatsRow:
 def _stats_from_env(env: Any) -> Stats:
     stats = Stats()
     rs = env.stats
-    for (_method, name), entry in (rs.entries or {}).items():
+    for (name, _method), entry in (rs.entries or {}).items():
         stats.rows.append(_row_from_entry(name if name else "/", entry))
     stats.aggregated = _row_from_entry("Aggregated", rs.total)
     if stats.aggregated.request_count:
