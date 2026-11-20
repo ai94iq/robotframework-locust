@@ -94,6 +94,7 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 | Create Load Test | host, verify_tls=True, proxy=, allowed_hosts= | Starts a scenario. The host is an http or https URL with no user name or password. If an allowlist is set, the host name must be on it. |
 | Add User Class | name, weight=1, fixed_count=0 | Starts a user class. Later tasks and waits belong to it. |
 | Set Wait Time | minimum, maximum | Think time between tasks. |
+| Set Pacing | interval | Starts a task run every interval per user, whatever the response time (Locust constant_pacing). A run that takes longer starts the next at once. Replaces Set Wait Time for the class. |
 | Add Stop Rule | rule | Stops the run once the rule holds for its whole window, such as `p95 > 1s for 10s` or `rc5?? > 20% for 5s, stop as passed`. See Safety limits. |
 | Set Load Stages | *stages | Ramps users over `duration:users` stages, such as `2m:20`. With stages, Run Load Test ignores users, spawn rate and run time. |
 | Add Get Request | name, path, weight=1, expected_status=200, headers=, expected_text= | Adds a GET task. Only the listed status codes pass. With expected_text, the body must also contain that text. |

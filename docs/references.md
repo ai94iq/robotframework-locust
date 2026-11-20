@@ -18,6 +18,11 @@ All sources, papers, and documentation referenced during the design and research
 - Pass/fail criteria (source of the Add Stop Rule syntax): https://github.com/Blazemeter/taurus/blob/master/site/dat/docs/PassFail.md
 - Monitoring-based criteria (cpu and mem rules): https://github.com/Blazemeter/taurus/blob/master/site/dat/docs/Monitoring.md
 
+## rfswarm
+
+- Apply Pacing (source of Set Pacing): https://github.com/damies13/rfswarm/blob/master/Doc/rfswarm_manager.md
+- Useful Variables and TestDataTable: https://github.com/damies13/rfswarm/blob/master/Doc/Preparing_for_perf.md
+
 ## Robot Framework
 
 - RF User Guide (creating test libraries): https://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html

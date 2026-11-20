@@ -38,6 +38,7 @@ class Scenario:
     proxy: str = ""
     wait_min: float = 1.0
     wait_max: float = 3.0
+    pacing: float = 0.0
     on_start: str = ""
     on_stop: str = ""
     tasks: list[Task] = field(default_factory=list)

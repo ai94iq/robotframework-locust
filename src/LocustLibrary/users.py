@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from locust import HttpUser, between
+from locust import HttpUser, between, constant_pacing
 from locust.exception import StopUser
 
 from .scenario import Scenario, Task
@@ -102,7 +102,8 @@ def _user_class(scenario: Scenario, tasks: list[Any]) -> type:
         "verify_tls": scenario.verify_tls,
         "proxy": scenario.proxy,
         "abstract": False,
-        "wait_time": between(scenario.wait_min, scenario.wait_max),
+        "wait_time": (constant_pacing(scenario.pacing) if scenario.pacing
+                      else between(scenario.wait_min, scenario.wait_max)),
     }
     if scenario.on_start:
         attrs["on_start"] = _keyword_method(scenario.on_start)

@@ -74,6 +74,17 @@ class BuildKeywords:
         self._scenario.wait_max = _parse_seconds(maximum)
 
     @keyword
+    def set_pacing(self, interval: str) -> None:
+        """Start a task run every `interval` per user, whatever the response time.
+
+        A run that takes longer starts the next one at once. Replaces Set Wait Time for the
+        current user class.
+        """
+        if self._scenario is None:
+            raise RuntimeError("Call Create Load Test first.")
+        self._scenario.pacing = _parse_seconds(interval)
+
+    @keyword
     def add_stop_rule(self, rule: str) -> None:
         """Stop the run once `rule` holds for its whole window, like `p95 > 1s for 10s`.
 

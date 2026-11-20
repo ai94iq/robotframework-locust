@@ -2,6 +2,9 @@
 
 ## 0.1.0 (unreleased)
 
+- New keyword Set Pacing starts a task run every interval per user, whatever
+  the response time, so a slow server does not lower the planned rate. It uses
+  Locust constant_pacing, like the Apply Pacing setting in rfswarm.
 - New keyword Add Stop Rule stops a run once a value stays past its limit for
   a whole window, such as `p95 > 1s for 10s`, `fail > 50% for 5s` or
   `rc5?? > 20% for 5s`. `cpu` and `mem` rules watch the load machine. A rule
