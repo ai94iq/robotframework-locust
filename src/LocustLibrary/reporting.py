@@ -1,6 +1,7 @@
 """Reporting: CSV and HTML export."""
 
 import csv
+import html
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -8,7 +9,9 @@ from typing import Any
 from locust.html import get_html_report
 from locust.stats import StatsCSV
 
-from .scenario import Stats
+from .scenario import Stats, StatsRow
+
+_HEADINGS = ("Name", "Requests", "Failures", "Median ms", "p95 ms", "p99 ms", "Max ms", "Req/s")
 
 
 def _write_table(path: Path, write_rows: Callable[[Any], None]) -> None:
@@ -41,6 +44,19 @@ def write_html_report(env: Any) -> str:
     """Generate the Locust HTML report."""
     report = get_html_report(env)  # type: ignore[no-untyped-call]
     return str(report)
+
+
+def stats_table_html(stats: Stats) -> str:
+    """One row per request name, then the aggregated row, for the Robot log."""
+    head = "".join(f"<th>{name}</th>" for name in _HEADINGS)
+    rows = [*stats.rows, *([stats.aggregated] if stats.aggregated else [])]
+    return f'<table border="1"><tr>{head}</tr>{"".join(_table_row(r) for r in rows)}</table>'
+
+
+def _table_row(row: StatsRow) -> str:
+    cells = (html.escape(row.name), row.request_count, row.failure_count, f"{row.median:.0f}",
+             f"{row.p95:.0f}", f"{row.p99:.0f}", f"{row.max:.0f}", f"{row.rps:.2f}")
+    return "<tr>" + "".join(f"<td>{cell}</td>" for cell in cells) + "</tr>"
 
 
 # Spreadsheets run a cell that starts with one of these as a formula.

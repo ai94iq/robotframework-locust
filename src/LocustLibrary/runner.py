@@ -2,13 +2,17 @@
 
 import os
 import time
+import warnings
 from collections.abc import Callable
 from typing import Any
 
 from locust import HttpUser, between
 from locust.env import Environment
 from locust.exception import StopUser
+from urllib3.exceptions import InsecureRequestWarning
 
+from .calllog import CallLog
+from .reporting import write_html_report
 from .scenario import RunConfig, Scenario, Stats, StatsRow, Task
 from .shape import StageShape
 
@@ -188,18 +192,34 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
     shape = StageShape(config.stages) if config.stages else None
     env = Environment(user_classes=[_build_class(s, budget) for s in scenarios],
                       shape_class=shape)
+    calls = _observe(env)
     runner = env.create_local_runner()
-    if shape is None:
-        runner.start(user_count=config.users, spawn_rate=config.spawn_rate)
-        seconds = _parse_time(config.run_time)
-    else:
-        runner.start_shape()
-        seconds = shape.total
-    _wait_until(seconds, budget)
-    runner.quit()
-    runner.greenlet.join(timeout=10)
+    # One warning per call drowns the log; the library logs one line per host instead.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", InsecureRequestWarning)
+        if shape is None:
+            runner.start(user_count=config.users, spawn_rate=config.spawn_rate)
+            seconds = _parse_time(config.run_time)
+        else:
+            runner.start_shape()
+            seconds = shape.total
+        _wait_until(seconds, budget)
+        runner.quit()
+        runner.greenlet.join(timeout=10)
+    return _finish(env, calls)
 
-    return _stats_from_env(env)
+
+def _observe(env: Any) -> CallLog:
+    calls = CallLog()
+    env.events.request.add_listener(calls.record)
+    return calls
+
+
+def _finish(env: Any, calls: CallLog) -> Stats:
+    stats = _stats_from_env(env)
+    stats.calls, stats.left_out = calls.entries, calls.left_out
+    stats.report_html = write_html_report(env)
+    return stats
 
 
 def _parse_time(value: str) -> float:

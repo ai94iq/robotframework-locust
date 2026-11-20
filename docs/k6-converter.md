@@ -178,18 +178,19 @@ k6 scenario:
 Build Combined Users
     Create Load Test    ${HOST}    verify_tls=${False}    proxy=${PROXY}
     Add User Class    otp    weight=6
-    Set Wait Time    0s    0s
+    Set Wait Time    1s    1s
     Add Python Task    otpScenario    combined_tasks.otpScenario
     Add User Class    signup    weight=8
-    Set Wait Time    0s    0s
+    Set Wait Time    1s    1s
     Add Python Task    signupScenario    combined_tasks.signupScenario
     Add User Class    token    weight=6
-    Set Wait Time    0s    0s
+    Set Wait Time    1s    1s
     Add Python Task    tokenScenario    combined_tasks.tokenScenario
 
 Run Combined Load
     Set Load Stages    120s:20    600s:20    60s:0
     Run Load Test    max_users=100
+    Export Report    combined
 
 Check Combined Load
     FOR    ${endpoint}    IN    @{COMBINED_CHECK_1_ENDPOINTS}

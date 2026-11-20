@@ -6,6 +6,7 @@ import pytest
 
 import LocustLibrary as lib_module
 from LocustLibrary import LocustLibrary, runner
+from LocustLibrary.calllog import CallLog
 from LocustLibrary.scenario import RunConfig, Scenario, Stats
 
 
@@ -65,7 +66,8 @@ def test_run_builds_every_class(monkeypatch) -> None:
         return type("Env", (), {"create_local_runner": lambda self: Local()})()
 
     monkeypatch.setattr(runner, "_patch_gevent", lambda: None)
-    monkeypatch.setattr(runner, "_stats_from_env", lambda _env: Stats())
+    monkeypatch.setattr(runner, "_observe", lambda _env: CallLog())
+    monkeypatch.setattr(runner, "_finish", lambda _env, _calls: Stats())
     monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(runner, "Environment", env)
     scenarios = [Scenario(host="http://h", name="a"), Scenario(host="http://h", name="b")]

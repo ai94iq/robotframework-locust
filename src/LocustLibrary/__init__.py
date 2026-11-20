@@ -1,14 +1,17 @@
 """Robot Framework library for authoring and running Locust load tests in RF syntax."""
 
+import html
 import importlib
 import subprocess
 import sys
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 from robot.api import logger
 from robot.api.deco import keyword
 
+from .calllog import MAX_FAILED, PER_NAME
 from .runner import run_load_test
 from .scenario import RunConfig, Scenario, Stage, Stats, StatsRow, Task
 
@@ -80,6 +83,16 @@ def _measured_percentile(row: StatsRow, percentile: str) -> float:
     if field is None:
         raise RuntimeError(f"Percentile not measured: {percentile}")
     return float(getattr(row, field))
+
+
+def _output_dir() -> str | None:
+    """Robot's output folder, so reports land beside log.html; None outside a Robot run."""
+    from robot.libraries.BuiltIn import BuiltIn, RobotNotRunningError
+
+    try:
+        return str(BuiltIn().get_variable_value("${OUTPUT DIR}"))
+    except RobotNotRunningError:
+        return None
 
 
 class LocustLibrary:
@@ -214,13 +227,14 @@ class LocustLibrary:
 
     @keyword
     def run_load_test(self, users: int = 10, spawn_rate: float = 1.0,
-                      run_time: str = "30s", csv_prefix: str = "locust",
-                      iterations: int = 0, max_users: int = 100) -> None:
+                      run_time: str = "30s", iterations: int = 0,
+                      max_users: int = 100) -> None:
         """Run the configured load test headless.
 
         `iterations` stops every user after that many task runs in total, within `run_time`.
         Stages from Set Load Stages replace `users`, `spawn_rate` and `run_time`.
         A run that would start more than `max_users` users is refused before it starts.
+        The log gets a stats table and the first calls of every request name plus the failed ones.
         """
         if self._scenario is None or self._config is None:
             raise RuntimeError("Call Create Load Test first.")
@@ -229,11 +243,20 @@ class LocustLibrary:
         self._config.run_time = run_time
         self._config.iterations = iterations
         self._check_ceiling(self._config, max_users)
-        from .validation import sanitize_prefix
-
-        self._config.csv_prefix = sanitize_prefix(csv_prefix)
+        for host in dict.fromkeys(s.host for s in self._scenarios if not s.verify_tls):
+            logger.warn(f"TLS verification is off for {host}")
         self._stats = run_load_test(self._scenarios, self._config)
-        logger.info(f"Load test finished: {self._stats}")
+        self._log_run(self._stats)
+
+    def _log_run(self, stats: Stats) -> None:
+        from .reporting import stats_table_html
+
+        logger.info(stats_table_html(stats), html=True)
+        for block in stats.calls:
+            logger.info(block, html=True)
+        if stats.left_out:
+            logger.info(f"{stats.left_out} more calls not logged: the log keeps the first "
+                        f"{PER_NAME} of each request name and up to {MAX_FAILED} failures.")
 
     def _check_ceiling(self, config: RunConfig, max_users: int) -> None:
         peak = max((s.users for s in config.stages), default=config.users)
@@ -322,12 +345,20 @@ class LocustLibrary:
 
     @keyword
     def export_report(self, base_path: str = "locust") -> str:
-        """Export CSV report. Returns base path."""
+        """Write <base>_stats.csv and the Locust HTML report <base>.html beside log.html.
+
+        The HTML report is linked in the log. Returns the base path.
+        """
         if self._stats is None:
             raise RuntimeError("No stats available. Run Load Test first.")
         from .reporting import write_stats_csv
 
-        return write_stats_csv(self._stats, base_path)
+        base = write_stats_csv(self._stats, base_path, _output_dir())
+        if self._stats.report_html:
+            Path(base + ".html").write_text(self._stats.report_html, encoding="utf-8")
+            name = html.escape(Path(base).name + ".html")
+            logger.info(f'Locust report: <a href="{name}">{name}</a>', html=True)
+        return base
 
     @keyword
     def start_locust_web(self, locustfile: str, port: int = 8089) -> None:

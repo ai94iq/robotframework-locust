@@ -6,6 +6,7 @@ import pytest
 from locust.exception import StopUser
 
 from LocustLibrary import LocustLibrary, runner
+from LocustLibrary.calllog import CallLog
 from LocustLibrary.scenario import RunConfig, Scenario, Stats, Task
 from LocustLibrary.shape import Stage, StageShape
 
@@ -107,7 +108,8 @@ def _fake_env(started: list[str]) -> Any:
 def test_run_uses_shape_when_staged(monkeypatch, config: RunConfig, expected: list[str]) -> None:
     started: list[str] = []
     monkeypatch.setattr(runner, "_patch_gevent", lambda: None)
-    monkeypatch.setattr(runner, "_stats_from_env", lambda _env: Stats())
+    monkeypatch.setattr(runner, "_observe", lambda _env: CallLog())
+    monkeypatch.setattr(runner, "_finish", lambda _env, _calls: Stats())
     monkeypatch.setattr(runner, "Environment", _fake_env(started))
     monkeypatch.setattr(runner.time, "sleep", lambda _s: None)
     runner.run_load_test([Scenario(host="http://h")], config)

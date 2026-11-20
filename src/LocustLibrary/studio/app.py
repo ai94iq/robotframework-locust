@@ -60,7 +60,6 @@ class RunWorker(QThread):  # type: ignore[misc]
                 users=self.kwargs["users"],
                 spawn_rate=self.kwargs["spawn_rate"],
                 run_time=self.kwargs["run_time"],
-                csv_prefix=self.kwargs["csv_prefix"],
             )
             self.finished.emit(lib.get_locust_stats())
         except Exception as exc:  # noqa: BLE001
@@ -214,11 +213,9 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         self.spawn_spin = QDoubleSpinBox()
         self.spawn_spin.setValue(2.0)
         self.runtime_edit = QLineEdit("10s")
-        self.csv_edit = QLineEdit("studio")
         cfg.addRow("Users", self.users_spin)
         cfg.addRow("Spawn rate", self.spawn_spin)
         cfg.addRow("Run time", self.runtime_edit)
-        cfg.addRow("CSV prefix", self.csv_edit)
         lay.addLayout(cfg)
 
         self.run_btn = QPushButton("Run")
@@ -260,7 +257,6 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
             "users": self.users_spin.value(),
             "spawn_rate": self.spawn_spin.value(),
             "run_time": self.runtime_edit.text(),
-            "csv_prefix": self.csv_edit.text(),
         }
         self.run_btn.setEnabled(False)
         self.status_label.setText("Running load test...")

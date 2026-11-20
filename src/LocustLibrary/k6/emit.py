@@ -60,6 +60,7 @@ def convert(script: str, opts: K6Options, functions: list[ExecFunction],
     stem = PurePath(script).stem
     by_name = {f.name: f for f in functions}
     load, condition = _load(opts.scenarios, max_users, report)
+    load.append(f"Export Report{_SEP}{stem}")
     checks, lists = _checks(opts.thresholds, stem.upper(), report)
     steps = _Steps(_classes(opts.scenarios, by_name, f"{stem}_tasks", report), load,
                    checks, condition, lists)

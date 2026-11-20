@@ -87,10 +87,9 @@ def test_run_load_test_stores_stats(monkeypatch) -> None:
     lib.create_load_test("http://127.0.0.1")
     stored = Stats()
     monkeypatch.setattr("LocustLibrary.run_load_test", lambda *_args, **_kwargs: stored)
-    lib.run_load_test(users=1, spawn_rate=1, run_time="1s", csv_prefix="a/b")
+    lib.run_load_test(users=1, spawn_rate=1, run_time="1s")
     assert lib._stats is stored
     assert lib._config is not None
-    assert lib._config.csv_prefix == "b"
 
 
 def test_stop_with_nothing_running() -> None:

@@ -80,14 +80,14 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 | Add Python Task | name, function, weight=1 | Adds a task that calls `module.function` with the Locust user. |
 | Set On Start | keyword_name | Sets the keyword each user runs when it starts. |
 | Set On Stop | keyword_name | Sets the keyword each user runs when it stops. |
-| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, csv_prefix=locust, iterations=0, max_users=100 | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users. iterations caps the task runs for all users together. |
+| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100 | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users. iterations caps the task runs for all users together. The log gets a stats table per request name and the first 3 calls of each name plus up to 50 failed calls, in RequestsLibrary style. Passwords, client secrets, tokens, OTP fields and auth headers show as `***`. With verify_tls off, it logs one warning per host. |
 | Get Locust Stats | none | Returns the stats rows, the aggregated row and the fail ratio as a dict. |
 | Get Aggregated Stats | none | Returns the aggregated stats row as a dict. |
 | Should Have No Failures | none | Fails if any request failed. |
 | Should Meet Response Time | endpoint, percentile, maximum | Fails if the percentile is above the maximum. Use an endpoint name, or `aggregated` for all requests. |
 | Should Meet Throughput | minimum | Fails if requests per second is below the minimum. |
 | Should Meet Error Rate | maximum, endpoint= | Fails if the error rate is above the maximum, such as `1%`. Checks all requests, or one endpoint. |
-| Export Report | base_path=locust | Writes the CSV stats files for the last run and returns the base path. |
+| Export Report | base_path=locust | Writes `<base>_stats.csv` and the Locust HTML report `<base>.html` into the Robot output folder, links the HTML report in the log, and returns the base path. |
 | Start Locust Web | locustfile, port=8089 | Starts the Locust web UI in a subprocess, on 127.0.0.1. |
 | Stop Locust Web | none | Stops the web UI that Start Locust Web started. |
 | Run Distributed | locustfile, processes=2 | Starts a master and worker processes on this machine. |

@@ -7,6 +7,7 @@ import pytest
 from locust.env import Environment
 
 from LocustLibrary import LocustLibrary
+from LocustLibrary.calllog import CallLog
 from LocustLibrary.distributed import _stop_one
 from LocustLibrary.reporting import write_csv_report, write_html_report
 from LocustLibrary.runner import (
@@ -129,7 +130,8 @@ def test_http_task_and_short_run(monkeypatch) -> None:
             return None
 
     monkeypatch.setattr("LocustLibrary.runner._patch_gevent", lambda: None)
-    monkeypatch.setattr("LocustLibrary.runner._stats_from_env", lambda _env: Stats())
+    monkeypatch.setattr("LocustLibrary.runner._observe", lambda _env: CallLog())
+    monkeypatch.setattr("LocustLibrary.runner._finish", lambda _env, _calls: Stats())
     monkeypatch.setattr("LocustLibrary.runner.time.sleep", lambda _seconds: None)
     monkeypatch.setattr(
         "LocustLibrary.runner.Environment",

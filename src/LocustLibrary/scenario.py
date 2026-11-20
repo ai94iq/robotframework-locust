@@ -55,7 +55,6 @@ class RunConfig:
     users: int = 10
     spawn_rate: float = 1.0
     run_time: str = "30s"
-    csv_prefix: str = "locust"
     stages: list[Stage] = field(default_factory=list)
     iterations: int = 0
 
@@ -88,3 +87,6 @@ class Stats:
     aggregated: StatsRow | None = None
     errors: list[dict[str, Any]] = field(default_factory=list)
     fail_ratio: float = 0.0
+    calls: list[str] = field(default_factory=list, repr=False)
+    left_out: int = 0
+    report_html: str = field(default="", repr=False)

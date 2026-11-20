@@ -148,7 +148,7 @@ def test_big_stages_scale_down_to_the_ceiling() -> None:
     opts = options.K6Options((a,), (), False, 0.0, 400)
     assert "    Set Load Stages    10s:100    10s:0\n" in _keywords(emit.convert("x.js", opts, []), "x")
     raised = emit.convert("x.js", opts, [], max_users=400)
-    assert "Run Load Test    max_users=400\n" in _keywords(raised, "x")
+    assert "Run Load Test    max_users=400\n    Export Report    x\n" in _keywords(raised, "x")
     assert "Ramp To 400 Users" in raised.files["tests/x.robot"]
 
 

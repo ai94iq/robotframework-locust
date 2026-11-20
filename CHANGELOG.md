@@ -2,6 +2,19 @@
 
 ## 0.1.0 (unreleased)
 
+- Run Load Test logs a stats table per request name instead of the raw stats
+  line. It also logs the first 3 calls of each request name and up to 50
+  failed calls, in RequestsLibrary style: request and response URL, headers
+  and body, each in a block that opens on click. Passwords, client secrets,
+  tokens, OTP fields and auth or cookie headers show as `***`. Bodies are cut
+  at 10,000 characters.
+- With verify_tls off, the run logs one warning per host instead of one
+  urllib3 warning per call.
+- Export Report writes into the Robot output folder, next to log.html. It now
+  also writes the Locust HTML report as `<base>.html` and links it in the log.
+- rflocust-k6 adds Export Report after Run Load Test in every generated suite.
+- Run Load Test no longer takes `csv_prefix`. It was stored but never used;
+  Export Report writes the files.
 - rflocust-k6 passes the host and environment name through `robot.utils.escape`
   when it writes the variables file. The host check already refuses Robot
   syntax; this is a second guard.
