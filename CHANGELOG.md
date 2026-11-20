@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-20)
 
 - The Locust Studio sidebar lists a suite's stop rules under the host and shows
   pacing on each user class. Class details sit on a second line, so the narrow

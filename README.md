@@ -20,6 +20,13 @@ The library uses Locust (2.30 or newer, below 3) for the load itself.
 Requires Python 3.11 or newer. Robot Framework 7.5 or newer and Locust are
 installed with the library.
 
+From PyPI:
+
+```
+pip install robotframework-locust
+pip install "robotframework-locust[studio]"  # with Locust Studio
+```
+
 From a checkout of this repository:
 
 ```
