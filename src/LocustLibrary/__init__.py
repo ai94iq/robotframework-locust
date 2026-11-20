@@ -14,7 +14,7 @@ from .runner import run_load_test
 from .scenario import RunConfig, Scenario, Stats
 from .shared import SharedKeywords
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 
 class LocustLibrary(BuildKeywords, CheckKeywords, SharedKeywords):

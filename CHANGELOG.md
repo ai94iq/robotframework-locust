@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 (2026-11-20)
+
+- Docs: the README uses absolute links, so the PyPI page shows its images.
+
 ## 1.0.1 (2026-11-20)
 
 - Fix: on Python 3.11 under Linux, Studio could hang while it started a
