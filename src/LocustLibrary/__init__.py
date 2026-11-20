@@ -12,11 +12,12 @@ from .checks import CheckKeywords
 from .parsing import _parse_seconds, _ratio
 from .runner import run_load_test
 from .scenario import RunConfig, Scenario, Stats
+from .shared import SharedKeywords
 
 __version__ = "0.1.0"
 
 
-class LocustLibrary(BuildKeywords, CheckKeywords):
+class LocustLibrary(BuildKeywords, CheckKeywords, SharedKeywords):
     """LocustLibrary drives load tests through Locust with RF-native syntax."""
 
     ROBOT_LIBRARY_SCOPE = "SUITE"
@@ -33,6 +34,7 @@ class LocustLibrary(BuildKeywords, CheckKeywords):
         self._web_proc: subprocess.Popen[bytes] | None = None
         self._dist_master: subprocess.Popen[bytes] | None = None
         self._dist_workers: list[subprocess.Popen[bytes]] | None = None
+        self._shared = {}
 
     @keyword
     def run_load_test(self, users: int = 10, spawn_rate: float = 1.0,
@@ -57,6 +59,7 @@ class LocustLibrary(BuildKeywords, CheckKeywords):
         self._config.stop_on_fail_ratio = _ratio(stop_on_fail_ratio)
         self._config.fail_ratio_warmup = _parse_seconds(fail_ratio_warmup)
         self._check_ceiling(self._config, max_users)
+        self._shared.clear()
         for host in dict.fromkeys(s.host for s in self._scenarios if not s.verify_tls):
             logger.warn(f"TLS verification is off for {host}")
         self._stats = run_load_test(self._scenarios, self._config)

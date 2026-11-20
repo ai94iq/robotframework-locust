@@ -2,6 +2,11 @@
 
 ## 0.1.0 (unreleased)
 
+- New keywords Put Shared Value and Take Shared Value let one step hand data it
+  created to another step during a run, first in first out per name, like the
+  rfswarm TestDataTable. Take waits up to a timeout and then fails the task.
+- Coverage now traces gevent greenlets, so lines that run after a greenlet
+  switch are counted.
 - New keywords Get User Index and Get User Iteration give a task keyword the
   number of the virtual user running it and its task run count, so each user
   can build unique data. Python tasks read `user.index` and `user.iteration`.

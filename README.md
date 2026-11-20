@@ -103,6 +103,8 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 | Add Python Task | name, function, weight=1 | Adds a task that calls `module.function` with the Locust user. |
 | Get User Index | | Inside a task keyword: the number of the virtual user running it, unique within the run. Use it for a unique value or data row per user. Python tasks read `user.index`. |
 | Get User Iteration | | Inside a task keyword: how many task runs this user has started, counting this one. Python tasks read `user.iteration`. |
+| Put Shared Value | name, value | Adds a value under a name for another user's step to take, such as an id one step created. |
+| Take Shared Value | name, timeout=10s | Takes the oldest value under the name, waiting up to timeout for one. Each value goes to one taker. With none in time the keyword fails, so the task counts as a failure. Run Load Test starts with no values. |
 | Set On Start | keyword_name | Sets the keyword each user runs when it starts. |
 | Set On Stop | keyword_name | Sets the keyword each user runs when it stops. |
 | Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100, stop_on_fail_ratio=0, fail_ratio_warmup=10s | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users. iterations caps the task runs for all users together. The log gets a stats table per request name and the first 3 calls of each name plus up to 50 failed calls, in RequestsLibrary style. Passwords, client secrets, tokens, OTP fields and auth headers show as `***`. With verify_tls off, it logs one warning per host. With stop_on_fail_ratio set, the run stops early when failures pass it. |

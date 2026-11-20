@@ -93,6 +93,8 @@ addopts = "-q --cov=LocustLibrary --cov-report=term-missing"
 [tool.coverage.run]
 source = ["src/LocustLibrary"]
 omit = ["src/LocustLibrary/studio/*"]
+# Users run in gevent greenlets; without this, lines after a greenlet switch go unrecorded.
+concurrency = ["gevent", "thread"]
 
 [tool.coverage.report]
 fail_under = 80
