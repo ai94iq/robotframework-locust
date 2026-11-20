@@ -17,3 +17,13 @@
   (be353d3)
 - Run Load Test takes `max_users` (default 100). A run whose peak user count
   is above it is refused before Locust starts. (044f1cb)
+- k6 options reader runs `k6 inspect` with a 60 s timeout and reads the
+  resolved scenarios, thresholds and TLS flag. It never runs `k6 run`.
+  (174007f)
+- k6 scanner finds the exported functions in a k6 script and marks each one
+  plain or hand port, with the first line that stops it. (e5f8509)
+- k6 emitter writes a Robot suite, a tasks module and a report from the
+  options and the scan. (3baa9b6)
+- rflocust-k6 command converts one k6 script into those three files.
+  `--max-users` sets the user ceiling, default 100. (d4c1740)
+- The first Add User Class replaces the empty default user class. (9944a54)

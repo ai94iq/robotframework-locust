@@ -32,7 +32,7 @@ Optional extras:
 
 ```
 pip install ".[studio]"  # adds the locust-studio command (PySide6, pyqtgraph)
-pip install ".[k6]"      # tree-sitter parsers, reserved for the k6 converter
+pip install ".[k6]"      # tree-sitter parsers for the rflocust-k6 command
 ```
 
 ## Example suite
@@ -123,9 +123,30 @@ Read these before you run a test against a host you do not own.
 
 ## k6 converter
 
-In progress. The library does not convert k6 scripts yet. The converter will
-read a k6 script through `k6 inspect` only. That command reads the script's
-options and does not run the test. The converter will never call `k6 run`.
+`rflocust-k6` turns a k6 script into a Robot suite for this library. It reads
+the script's options with `k6 inspect`, scans the exported functions for plain
+HTTP calls, and writes three files. A function it cannot convert becomes a
+stub that raises `NotImplementedError` until you port it by hand.
+
+Install the extra. The k6 binary must also be on PATH, because `k6 inspect`
+reads the options:
+
+```
+pip install ".[k6]"
+rflocust-k6 script.js --out dir -e KEY=VALUE --max-users 100
+```
+
+The command writes `dir/script.robot`, `dir/script_tasks.py` and
+`dir/script.report.md`. The report marks each item as mapped, approximate,
+hand port, clamped, set by hand or unsupported. Run the suite with:
+
+```
+robot --pythonpath dir dir/script.robot
+```
+
+The converter never runs `k6 run` and sends no request. See
+`docs/k6-converter.md` for the mapping table, the limits and how to port a
+function by hand.
 
 ## Sources
 
