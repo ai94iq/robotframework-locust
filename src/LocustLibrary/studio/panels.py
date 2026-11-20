@@ -16,7 +16,7 @@ _KEYS = ("name", "request_count", "failure_count", "median", "p95", "p99", "aver
 # A failure count above zero is the only red in the table.
 _FAIL_KEYS = ("failure_count", "failures_s")
 # Theme colour token for each chart line.
-_LINE_TOKENS = {"rps": "pass", "fails": "fail", "p50": "accent", "p95": "second", "users": "focus"}
+_LINE_TOKENS = {"rps": "ok", "fails": "fail", "p50": "accent", "p95": "second", "users": "focus"}
 _RIGHT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
 _LEFT = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 

@@ -6,10 +6,10 @@ from typing import Any
 # Tone steps window, panel, raised separate areas; line only sits between panes, rows and inputs.
 _GRAPHITE = {"window": "#151518", "panel": "#1c1c20", "raised": "#232328", "line": "#2c2c32",
              "ink": "#ececef", "muted": "#8d8d96", "accent": "#5865f2", "accent_hover": "#4049b8",
-             "focus": "#7c8cff", "second": "#c4a1ff", "pass": "#3ecf8e", "fail": "#f2555a"}
+             "focus": "#7c8cff", "second": "#c4a1ff", "ok": "#3ecf8e", "fail": "#f2555a"}
 _PAPER = {"window": "#f7f5f0", "panel": "#fffdf9", "raised": "#efece5", "line": "#e2ddd2",
           "ink": "#1d1b18", "muted": "#6f6a61", "accent": "#0b7476", "accent_hover": "#0a5a5b",
-          "focus": "#0b7476", "second": "#c2551f", "pass": "#16804a", "fail": "#d23c3c"}
+          "focus": "#0b7476", "second": "#c2551f", "ok": "#16804a", "fail": "#d23c3c"}
 
 UI_FONT = "'Inter', 'Segoe UI', sans-serif"
 MONO_FONT = "'JetBrains Mono', 'Consolas', monospace"
@@ -57,7 +57,7 @@ QHeaderView::section { background: $panel; color: $muted; border: none;
 QLabel#label { color: $muted; font-size: 11px; font-weight: 600; }
 QLabel#pill { background: $raised; color: $muted; border-radius: 11px; padding: 3px 10px;
     font-size: 11px; }
-QLabel#pill[running="true"] { color: $pass; }
+QLabel#pill[running="true"] { color: $ok; }
 QScrollBar:vertical { background: transparent; width: 10px; margin: 0; }
 QScrollBar:horizontal { background: transparent; height: 10px; margin: 0; }
 QScrollBar::handle { background: $line; border-radius: 5px; min-height: 24px; min-width: 24px; }
