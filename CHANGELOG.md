@@ -6,7 +6,7 @@
   tasks in place of the sample lists. It runs the suite under Robot and draws
   Locust's report charts live, one point a second. The Report tab shows the
   Locust statistics table and opens the Robot log and the Locust report.
-  Studio no longer crashed when it started Robot on Python 3.15: it now uses
+  Studio no longer crashes when it starts Robot on Python 3.15: it now uses
   the standard `subprocess` in place of gevent's.
 - Run Load Test writes a JSON-lines feed of the chart values and the final
   stats when `LOCUSTLIBRARY_FEED` names a file.
