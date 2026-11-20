@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 (2026-11-20)
+
+- Fix: on Python 3.11 under Linux, Studio could hang while it started a
+  run. It now starts the run with posix_spawn.
+- CI installs with pip and stops a stuck test after 60 seconds with a
+  stack dump. 1.0.0 was tagged but never reached PyPI.
+
 ## 1.0.0 (2026-11-20)
 
 The first release.
