@@ -106,6 +106,8 @@ def test_big_stages_scale_down_to_the_ceiling() -> None:
     a = options.K6Scenario("a", "ramping-vus", "fa", (Stage(10, 400), Stage(10, 0)))
     done = emit.convert("x.js", options.K6Options((a,), (), False, 0.0, 400), [])
     assert "    Set Load Stages    10s:100    10s:0\n" in done.robot
+    raised = emit.convert("x.js", options.K6Options((a,), (), False, 0.0, 400), [], max_users=400)
+    assert "${MAX_USERS}      400\n" in raised.robot
 
 
 def test_unsupported_threshold_is_reported() -> None:

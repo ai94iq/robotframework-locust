@@ -40,7 +40,7 @@ def convert(script: str, opts: K6Options, functions: list[ExecFunction],
     body = [*_classes(opts.scenarios, by_name, module, report),
             *_load(opts.scenarios, max_users, report),
             *_checks(opts.thresholds, report)]
-    robot = _suite(script, module, _host(functions, report), opts.insecure, body)
+    robot = _suite(script, module, _host(functions, report), opts.insecure, max_users, body)
     names = list(dict.fromkeys(s.exec_name for s in opts.scenarios))
     tasks = _tasks_module(script, [(n, by_name.get(n)) for n in names])
     return Conversion(robot, tasks, report.markdown(script))
@@ -129,7 +129,8 @@ def _host(functions: list[ExecFunction], report: _Report) -> str:
     return _DEFAULT_HOST
 
 
-def _suite(script: str, module: str, host: str, insecure: bool, body: list[str]) -> str:
+def _suite(script: str, module: str, host: str, insecure: bool, max_users: int,
+           body: list[str]) -> str:
     title = PurePath(script).stem.replace("_", " ").title()
     head = [
         "*** Settings ***",
@@ -140,7 +141,7 @@ def _suite(script: str, module: str, host: str, insecure: bool, body: list[str])
         "*** Variables ***",
         f"${{HOST}}           {host}",
         "${PROXY}          ${EMPTY}",
-        "${MAX_USERS}      100", "",
+        f"${{MAX_USERS}}      {max_users}", "",
         "*** Test Cases ***",
         f"{title} Load Test",
         f"{_SEP}Create Load Test{_SEP}${{HOST}}{_SEP}verify_tls=${{{not insecure}}}{_SEP}proxy=${{PROXY}}",
