@@ -37,6 +37,7 @@ k6 = [
 
 [project.scripts]
 locust-studio = "LocustLibrary.studio.app:main"
+rflocust-k6 = "LocustLibrary.k6.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/ai94iq/robotframework-locust"
