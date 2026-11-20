@@ -25,6 +25,8 @@ page covers how the conversion works, what it maps, and what you port by hand.
    or hand port.
 3. The emitter (`src/LocustLibrary/k6/emit.py`) maps what k6 and LocustLibrary
    share into Robot keywords. Every item it cannot map goes into the report.
+   `profile.py` maps scenarios and thresholds to keyword lines, and
+   `robot_files.py` writes the suite, resources and Python tasks.
 
 The k6 binary must be on PATH. If it is not, the command stops with an error.
 `-e KEY=VALUE` pairs go to `k6 inspect` in sorted order.
@@ -67,7 +69,7 @@ Notes on the rows:
 - Iterations are summed only when every scenario is `shared-iterations`.
   `constant-vus` scenarios get no iterations.
 - run_time is the longest scenario duration. When no scenario sets one, the
-  run is 600 s (`_load` in `emit.py`).
+  run is 600 s (`load` in `profile.py`).
 - A mix of executors that includes `ramping-vus`, or any other mix that is not
   only `constant-vus` and `shared-iterations`, uses the users path and is
   flagged approximate.

@@ -7,6 +7,9 @@
 - The library code is split by job: `builder.py` (build keywords),
   `checks.py` (stats and assert keywords), `parsing.py` (argument parsing) and
   `users.py` (Locust user classes). Keyword names and behavior are unchanged.
+- The k6 emitter is split by job: `emit.py` (convert and host), `profile.py`
+  (scenarios and thresholds to keyword lines) and `robot_files.py` (suite,
+  resources and tasks text). Converter output is unchanged.
 - Create Load Test takes `allowed_hosts`, or reads
   `LOCUSTLIBRARY_ALLOWED_HOSTS`, and refuses a host that is not on the list.
   With no list, it logs a warning and goes on.
