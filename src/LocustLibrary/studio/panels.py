@@ -2,6 +2,8 @@
 
 from typing import Any
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor, QFont
 from PySide6.QtWidgets import QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from LocustLibrary.reporting import HEADINGS
@@ -11,16 +13,30 @@ from .live import Series
 # Row keys in the order of Locust's statistics columns.
 _KEYS = ("name", "request_count", "failure_count", "median", "p95", "p99", "average", "min", "max",
          "rps", "failures_s")
-# Line colours of Locust's report charts.
-_GREEN, _RED, _YELLOW, _PURPLE, _BLUE = "#00ca5a", "#ff6d6d", "#ffca5a", "#9966cc", "#5d8cc2"
+# A failure count above zero is the only red in the table.
+_FAIL_KEYS = ("failure_count", "failures_s")
+# Theme colour token for each chart line.
+_LINE_TOKENS = {"rps": "pass", "fails": "fail", "p50": "accent", "p95": "second", "users": "focus"}
+_RIGHT = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+_LEFT = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
 
 
 def stats_table() -> QTableWidget:
     table = QTableWidget(0, len(HEADINGS))
-    table.setHorizontalHeaderLabels(list(HEADINGS))
     table.verticalHeader().setVisible(False)
+    table.setShowGrid(False)
     table.setAccessibleName("Endpoint statistics")
+    for c, heading in enumerate(HEADINGS):
+        header = QTableWidgetItem(heading)
+        header.setTextAlignment(_RIGHT if c else _LEFT)
+        table.setHorizontalHeaderItem(c, header)
     return table
+
+
+def set_table_colors(table: QTableWidget, colors: dict[str, str]) -> None:
+    """Keep the theme's fail and raised tones on the table for the next fill."""
+    table.setProperty("failColor", colors["fail"])
+    table.setProperty("raisedColor", colors["raised"])
 
 
 def _cell(key: str, value: Any) -> str:
@@ -36,10 +52,33 @@ def fill_stats(table: QTableWidget, final: dict[str, Any]) -> None:
     if final.get("aggregated"):
         rows.append(final["aggregated"])
     table.setRowCount(len(rows))
+    last = len(rows) - 1 if final.get("aggregated") else -1
     for r, row in enumerate(rows):
         for c, key in enumerate(_KEYS):
-            table.setItem(r, c, QTableWidgetItem(_cell(key, row.get(key, 0))))
+            item = _item(table, key, row.get(key, 0))
+            if r == last:
+                _mark_aggregated(table, item)
+            table.setItem(r, c, item)
     table.resizeColumnsToContents()
+
+
+def _item(table: QTableWidget, key: str, value: Any) -> QTableWidgetItem:
+    item = QTableWidgetItem(_cell(key, value))
+    if key == "name":
+        item.setFont(QFont("Inter", 9))
+        item.setTextAlignment(_LEFT)
+        return item
+    item.setTextAlignment(_RIGHT)
+    if key in _FAIL_KEYS and (value or 0) > 0:
+        item.setForeground(QBrush(QColor(table.property("failColor") or "#f2555a")))
+    return item
+
+
+def _mark_aggregated(table: QTableWidget, item: QTableWidgetItem) -> None:
+    font = item.font()
+    font.setBold(True)
+    item.setFont(font)
+    item.setBackground(QBrush(QColor(table.property("raisedColor") or "#232328")))
 
 
 class Charts(QWidget):  # type: ignore[misc]
@@ -54,21 +93,36 @@ class Charts(QWidget):  # type: ignore[misc]
             lay.addWidget(QLabel("Install pyqtgraph for live charts"))
             self._lines: dict[str, Any] = {}
             return
+        self._pg = pg
         self._lines = {}
+        self._plots: list[Any] = []
         for title, lines in (
-            ("Total Requests per Second", (("rps", "RPS", _GREEN), ("fails", "Failures/s", _RED))),
-            ("Response Times (ms)", (("p50", "50th percentile", _YELLOW), ("p95", "95th percentile", _PURPLE))),
-            ("Number of Users", (("users", "Users", _BLUE),)),
+            ("Total Requests per Second", (("rps", "RPS"), ("fails", "Failures/s"))),
+            ("Response Times (ms)", (("p50", "50th percentile"), ("p95", "95th percentile"))),
+            ("Number of Users", (("users", "Users"),)),
         ):
             plot = pg.PlotWidget(title=title)
-            plot.setBackground(None)
-            plot.showGrid(x=True, y=True, alpha=0.2)
+            plot.showGrid(x=True, y=True, alpha=0.15)
             plot.addLegend(offset=(10, 10))
             plot.setLabel("bottom", "seconds")
             plot.setMinimumHeight(140)
-            for key, name, colour in lines:
-                self._lines[key] = plot.plot([], [], pen=pg.mkPen(colour, width=2), name=name)
+            for key, name in lines:
+                self._lines[key] = plot.plot([], [], name=name)
+            self._plots.append(plot)
             lay.addWidget(plot)
+
+    def set_colors(self, colors: dict[str, str]) -> None:
+        """Paint the plots in the theme: panel ground, muted axes, one token per line."""
+        for key, line in self._lines.items():
+            line.setPen(self._pg.mkPen(colors[_LINE_TOKENS[key]], width=2))
+        for plot in self._plots:
+            plot.setBackground(colors["panel"])
+            plot.setTitle(plot.plotItem.titleLabel.text, color=colors["ink"], size="10pt")
+            for side in ("left", "bottom"):
+                axis = plot.getAxis(side)
+                axis.setPen(colors["line"])
+                axis.setTextPen(colors["muted"])
+            plot.plotItem.legend.setLabelTextColor(colors["muted"])
 
     def draw(self, series: Series) -> None:
         for key, line in self._lines.items():

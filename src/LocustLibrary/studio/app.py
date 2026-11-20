@@ -11,10 +11,12 @@ try:
         QCheckBox,
         QComboBox,
         QFormLayout,
+        QHBoxLayout,
         QLabel,
         QMainWindow,
         QSplitter,
-        QTabWidget,
+        QStackedWidget,
+        QTabBar,
         QTextEdit,
         QVBoxLayout,
         QWidget,
@@ -23,6 +25,8 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit("PySide6 required for studio") from exc
 
 from .build_tab import BuildTab
+from .fonts import load_fonts
+from .panels import set_table_colors
 from .report_tab import ReportTab
 from .run_tab import RunTab
 from .sidebar import Sidebar
@@ -35,23 +39,36 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         self.setWindowTitle("robotframework-locust studio")
         self.resize(1440, 900)
         self.setMinimumSize(900, 600)
-        self._theme_name = "dark_console"
+        load_fonts()
+        self._theme_name = "graphite"
         self.build_tab = BuildTab()
         self.run_tab = RunTab(self.build_tab.scenario)
         self.report_tab = ReportTab()
         self.sidebar = Sidebar()
-        self.tabs = QTabWidget()
-        self.tabs.addTab(self.build_tab, "Build")
-        self.tabs.addTab(self.run_tab, "Run")
-        self.tabs.addTab(self.report_tab, "Report")
-        self.tabs.addTab(self._make_settings_tab(), "Settings")
+        self.pages = QStackedWidget()
+        self.tabs = QTabBar()
+        self.tabs.setDrawBase(False)
+        self.tabs.setAccessibleName("Sections")
+        for page, title in ((self.build_tab, "Build"), (self.run_tab, "Run"),
+                            (self.report_tab, "Report"), (self._make_settings_tab(), "Settings")):
+            self.pages.addWidget(page)
+            self.tabs.addTab(title)
+        self.tabs.currentChanged.connect(self.pages.setCurrentIndex)
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setHandleWidth(1)
         splitter.addWidget(self.sidebar)
-        splitter.addWidget(self.tabs)
+        splitter.addWidget(self.pages)
         splitter.addWidget(self._make_right_panel())
-        splitter.setSizes([260, 880, 300])
-        self.setCentralWidget(splitter)
+        splitter.setSizes([210, 1000, 260])
+        central = QWidget()
+        lay = QVBoxLayout(central)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(0)
+        lay.addWidget(self._make_header())
+        lay.addWidget(splitter, 1)
+        self.setCentralWidget(central)
         self._connect()
+        self.apply_theme(self._theme_name)
 
     def _connect(self) -> None:
         self.sidebar.suite_opened.connect(self.run_tab.set_suite)
@@ -64,7 +81,31 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
 
     def apply_theme(self, name: str) -> None:
         self._theme_name = name
-        self.setStyleSheet(get_theme(name)["qss"])
+        theme = get_theme(name)
+        self.setStyleSheet(theme["qss"])
+        for table in (self.run_tab.stats_table, self.report_tab.table):
+            set_table_colors(table, theme["colors"])
+        self.run_tab.charts.set_colors(theme["colors"])
+
+    def _make_header(self) -> Any:
+        header = QWidget()
+        header.setObjectName("header")
+        row = QHBoxLayout(header)
+        row.setContentsMargins(12, 8, 12, 8)
+        row.setSpacing(12)
+        name = QLabel("Locust Studio")
+        name.setObjectName("title")
+        track = QWidget()
+        track.setObjectName("track")
+        track_row = QHBoxLayout(track)
+        track_row.setContentsMargins(2, 2, 2, 2)
+        track_row.addWidget(self.tabs)
+        for widget in (name, track):
+            row.addWidget(widget)
+        row.addStretch(1)
+        for widget in (self.run_tab.status_label, self.run_tab.stop_btn, self.run_tab.run_btn):
+            row.addWidget(widget)
+        return header
 
     def _toggle_rtl(self, checked: bool) -> None:
         QApplication.instance().setLayoutDirection(
@@ -78,9 +119,14 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
 
     def _make_right_panel(self) -> Any:
         w = QWidget()
+        w.setObjectName("pane")
         lay = QVBoxLayout(w)
-        lay.addWidget(QLabel("Live log"))
+        lay.setContentsMargins(12, 12, 12, 12)
+        title = QLabel("Live log")
+        title.setObjectName("label")
+        lay.addWidget(title)
         self.log_text = QTextEdit()
+        self.log_text.setObjectName("console")
         self.log_text.setReadOnly(True)
         self.log_text.setAccessibleName("Live log")
         self.log_text.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
@@ -98,6 +144,7 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         lay = QVBoxLayout(w)
         form = QFormLayout()
         self.theme_combo = QComboBox()
+        self.theme_combo.setAccessibleName("Theme")
         for k, v in THEMES.items():
             self.theme_combo.addItem(v["name"], k)
         self.theme_combo.currentIndexChanged.connect(

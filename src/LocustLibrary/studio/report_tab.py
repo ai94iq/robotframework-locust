@@ -16,7 +16,9 @@ class ReportTab(QWidget):  # type: ignore[misc]
         self._log = Path()
         self._reports: list[Path] = []
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 12, 12, 12)
         self.summary = QLabel("No run yet.")
+        self.summary.setObjectName("headline")
         lay.addWidget(self.summary)
         self.table = stats_table()
         lay.addWidget(self.table, 1)
@@ -26,6 +28,7 @@ class ReportTab(QWidget):  # type: ignore[misc]
         self.open_report_btn = QPushButton("Open Locust report")
         self.open_report_btn.clicked.connect(lambda: _open(self._reports[0]))
         for button in (self.open_log_btn, self.open_report_btn):
+            button.setObjectName("ghost")
             button.setEnabled(False)
             buttons.addWidget(button)
         lay.addLayout(buttons)

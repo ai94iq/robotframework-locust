@@ -51,6 +51,11 @@ together on the Build tab.
 Run Load Test writes the live feed only when the `LOCUSTLIBRARY_FEED`
 environment variable names a file. Studio sets it for its own runs.
 
+Studio has two themes, picked on the Settings tab: Graphite (dark, the
+default) and Paper (light). DESIGN.md describes both. Studio ships the Inter
+and JetBrains Mono fonts under the SIL Open Font License 1.1
+(`studio/fonts/`); without them it falls back to Segoe UI and Consolas.
+
 ## Example suite
 
 `home_load.robot` is a short suite. It has one scenario with two GET

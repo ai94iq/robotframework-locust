@@ -1,6 +1,7 @@
 """Run tab: run the open suite under Robot, or the Build tab's tasks in process, with live charts."""
 
 import tempfile
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,6 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -44,15 +44,20 @@ class RunTab(QWidget):  # type: ignore[misc]
         self._timer.setInterval(500)
         self._timer.timeout.connect(self._tick)
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(10)
         lay.addWidget(self._settings())
-        lay.addLayout(self._buttons())
+        self._buttons()
+        self._started = 0.0
         self.stats_table = stats_table()
         self.stats_table.setMaximumHeight(170)
         lay.addWidget(self.stats_table)
         self.charts = Charts()
         lay.addWidget(self.charts, 1)
-        self.status_label = QLabel("Ready to run")
-        lay.addWidget(self.status_label)
+        # The window's header row shows the status pill and the Run and Stop buttons.
+        self.status_label = QLabel("Ready")
+        self.status_label.setObjectName("pill")
+        self.status_label.setAccessibleName("Run status")
 
     def _settings(self) -> QWidget:
         self.run_settings = QWidget()
@@ -67,19 +72,16 @@ class RunTab(QWidget):  # type: ignore[misc]
         cfg.addRow("Run time", self.runtime_edit)
         return self.run_settings
 
-    def _buttons(self) -> QHBoxLayout:
-        row = QHBoxLayout()
+    def _buttons(self) -> None:
         self.run_btn = QPushButton("Run")
         self.run_btn.setAccessibleName("Run load test")
         self.run_btn.setToolTip("Start the load test (Ctrl+R)")
         self.run_btn.clicked.connect(self.run)
         self.stop_btn = QPushButton("Stop")
+        self.stop_btn.setObjectName("ghost")
         self.stop_btn.setAccessibleName("Stop the run")
         self.stop_btn.setEnabled(False)
         self.stop_btn.clicked.connect(self._stop)
-        row.addWidget(self.run_btn)
-        row.addWidget(self.stop_btn)
-        return row
 
     @property
     def running(self) -> bool:
@@ -100,7 +102,8 @@ class RunTab(QWidget):  # type: ignore[misc]
         self.charts.draw(self.series)
         self.stats_table.setRowCount(0)
         self.run_btn.setEnabled(False)
-        self.status_label.setText("Running load test...")
+        self._started = time.monotonic()
+        self._set_status("Running 0 s", running=True)
         if self._suite:
             self._suite_run = start_suite(self._suite)
             self.console.emit(f"Output: {self._suite_run.outdir}\n")
@@ -125,6 +128,7 @@ class RunTab(QWidget):  # type: ignore[misc]
             self.console.emit("Stopped.\n")
 
     def _tick(self) -> None:
+        self._set_status(f"Running {time.monotonic() - self._started:.0f} s", running=True)
         run = self._suite_run
         if run is None:
             records, self._feed_at = feed.read_new(self._feed_path, self._feed_at)
@@ -157,7 +161,15 @@ class RunTab(QWidget):  # type: ignore[misc]
 
     def _set_idle(self, text: str) -> None:
         self.run_btn.setEnabled(True)
+        self._set_status(text, running=False)
+
+    def _set_status(self, text: str, running: bool) -> None:
         self.status_label.setText(text)
+        if self.status_label.property("running") != running:
+            self.status_label.setProperty("running", running)
+            # Qt applies a property-based style only after a re-polish.
+            self.status_label.style().unpolish(self.status_label)
+            self.status_label.style().polish(self.status_label)
 
     def _show_final(self, final: dict[str, Any]) -> None:
         fill_stats(self.stats_table, final)

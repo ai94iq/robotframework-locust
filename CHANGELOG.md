@@ -2,6 +2,12 @@
 
 ## 0.1.0 (unreleased)
 
+- Locust Studio has a new look: Graphite (dark, default) and Paper (light)
+  replace Dark Console, Clean Light, Neon Dark and High Contrast. One header
+  row holds the tabs, the run status and the Run and Stop buttons. Numbers in
+  the stats table are right-aligned in JetBrains Mono, and a failure count is
+  red only above zero. The charts take the theme's colours. Inter and
+  JetBrains Mono ship with Studio (SIL Open Font License 1.1).
 - Locust Studio fills the Run tab stats table every second during a run, not
   only when the run ends. The run feed carries the table with each point.
 - The library code is split by job: `builder.py` (build keywords),

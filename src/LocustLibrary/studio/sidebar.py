@@ -23,8 +23,11 @@ class Sidebar(QWidget):  # type: ignore[misc]
     def __init__(self) -> None:
         super().__init__()
         self._classes: list[Any] = []
+        self.setObjectName("pane")
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 12, 12, 12)
         open_btn = QPushButton("Open suite...")
+        open_btn.setObjectName("ghost")
         open_btn.setAccessibleName("Open a load suite")
         open_btn.setToolTip("Open a .robot load suite (Ctrl+O)")
         open_btn.clicked.connect(self.choose_suite)
@@ -32,12 +35,12 @@ class Sidebar(QWidget):  # type: ignore[misc]
         self.suite_label = QLabel("No suite open. Tasks from the Build tab run instead.")
         self.suite_label.setWordWrap(True)
         lay.addWidget(self.suite_label)
-        lay.addWidget(QLabel("User classes"))
+        lay.addWidget(_section("User classes"))
         self.class_list = QListWidget()
         self.class_list.setAccessibleName("User classes")
         self.class_list.currentRowChanged.connect(self._show_class_tasks)
         lay.addWidget(self.class_list)
-        lay.addWidget(QLabel("Tasks of the selected class"))
+        lay.addWidget(_section("Tasks of the selected class"))
         self.class_tasks = QListWidget()
         self.class_tasks.setAccessibleName("Class tasks")
         lay.addWidget(self.class_tasks)
@@ -68,3 +71,9 @@ class Sidebar(QWidget):  # type: ignore[misc]
         self.class_tasks.clear()
         if 0 <= row < len(self._classes):
             self.class_tasks.addItems(self._classes[row].tasks)
+
+
+def _section(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setObjectName("label")
+    return label

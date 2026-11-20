@@ -21,6 +21,7 @@ class BuildTab(QWidget):  # type: ignore[misc]
         super().__init__()
         self.tasks: list[dict[str, Any]] = []
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 12, 12, 12)
         form = QFormLayout()
         self.host_edit = QLineEdit("http://127.0.0.1:8765")
         self.host_edit.setAccessibleName("Host URL")

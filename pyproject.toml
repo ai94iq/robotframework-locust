@@ -52,7 +52,7 @@ version = {attr = "LocustLibrary.__version__"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-LocustLibrary = ["py.typed"]
+LocustLibrary = ["py.typed", "studio/fonts/*"]
 
 [dependency-groups]
 dev = [
