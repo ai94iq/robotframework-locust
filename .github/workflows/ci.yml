@@ -16,5 +16,5 @@ jobs:
       - run: uv run ruff check src tests evals
       - run: uv run mypy src evals/hooks/mr_guard.py
       - run: uv run pytest
-      - run: uv run bandit -r src
+      - run: uv run bandit -c pyproject.toml -r src
       - run: uv run pip-audit

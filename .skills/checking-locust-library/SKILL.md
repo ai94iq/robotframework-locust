@@ -1,6 +1,6 @@
 ---
 name: checking-locust-library
-description: Runs ruff, mypy, and pytest for robotframework-locust and holds the coverage gate. Use for "check the library", "run the tests", "is coverage green".
+description: Runs ruff, mypy, pytest, and bandit for robotframework-locust and holds the coverage gate. Use for "check the library", "run the tests", "is coverage green".
 ---
 
 # Checking the Locust library
@@ -11,6 +11,7 @@ From the repo root, run exactly:
 uv run ruff check src tests evals
 uv run mypy src evals/hooks/mr_guard.py
 uv run pytest
+uv run bandit -c pyproject.toml -r src
 uv run python evals/hooks/mr_guard.py
 ```
 

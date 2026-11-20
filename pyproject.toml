@@ -69,6 +69,10 @@ extend-select = ["I", "UP", "B", "SIM"]
 # Robot Framework libraries use a CamelCase module name.
 ignore = ["N999"]
 
+[tool.bandit]
+# Popen gets an argument list, no shell, after validate_locustfile.
+skips = ["B404", "B603"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
