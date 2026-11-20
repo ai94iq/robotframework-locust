@@ -1,0 +1,103 @@
+{
+  "vus": null,
+  "duration": null,
+  "iterations": null,
+  "stages": null,
+  "scenarios": {
+    "otp": {
+      "executor": "ramping-vus",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": "otpScenario",
+      "tags": null,
+      "startVUs": null,
+      "stages": [
+        {
+          "duration": "2m0s",
+          "target": 6
+        },
+        {
+          "duration": "10m0s",
+          "target": 6
+        },
+        {
+          "duration": "1m0s",
+          "target": 0
+        }
+      ],
+      "gracefulRampDown": null
+    },
+    "signup": {
+      "executor": "ramping-vus",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": "signupScenario",
+      "tags": null,
+      "startVUs": null,
+      "stages": [
+        {
+          "duration": "2m0s",
+          "target": 8
+        },
+        {
+          "duration": "10m0s",
+          "target": 8
+        },
+        {
+          "duration": "1m0s",
+          "target": 0
+        }
+      ],
+      "gracefulRampDown": null
+    },
+    "token": {
+      "executor": "ramping-vus",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": "tokenScenario",
+      "tags": null,
+      "startVUs": null,
+      "stages": [
+        {
+          "duration": "2m0s",
+          "target": 6
+        },
+        {
+          "duration": "10m0s",
+          "target": 6
+        },
+        {
+          "duration": "1m0s",
+          "target": 0
+        }
+      ],
+      "gracefulRampDown": null
+    }
+  },
+  "thresholds": {
+    "http_req_duration{endpoint:register}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:token}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:verify-phone}": [
+      "p(95)<1000"
+    ],
+    "http_req_failed{endpoint:register}": [
+      "rate<0.01"
+    ],
+    "http_req_failed{endpoint:token}": [
+      "rate<0.01"
+    ],
+    "http_req_failed{endpoint:verify-phone}": [
+      "rate<0.01"
+    ]
+  },
+  "insecureSkipTLSVerify": true,
+  "totalDuration": "13m30s",
+  "maxVUs": 20
+}

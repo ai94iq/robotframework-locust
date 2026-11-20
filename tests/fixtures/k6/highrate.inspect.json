@@ -1,0 +1,70 @@
+{
+  "vus": null,
+  "duration": null,
+  "iterations": null,
+  "stages": null,
+  "scenarios": {
+    "otp": {
+      "executor": "constant-arrival-rate",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": "otpScenario",
+      "tags": null,
+      "rate": 100,
+      "timeUnit": "1s",
+      "duration": "10m0s",
+      "preAllocatedVUs": 225,
+      "maxVUs": 900
+    },
+    "signup": {
+      "executor": "constant-arrival-rate",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": "signupScenario",
+      "tags": null,
+      "rate": 200,
+      "timeUnit": "1s",
+      "duration": "10m0s",
+      "preAllocatedVUs": 300,
+      "maxVUs": 1200
+    },
+    "token": {
+      "executor": "constant-arrival-rate",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": "tokenScenario",
+      "tags": null,
+      "rate": 200,
+      "timeUnit": "1s",
+      "duration": "10m0s",
+      "preAllocatedVUs": 300,
+      "maxVUs": 1200
+    }
+  },
+  "thresholds": {
+    "http_req_duration{endpoint:register}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:token}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:verify-phone}": [
+      "p(95)<1000"
+    ],
+    "http_req_failed{endpoint:register}": [
+      "rate<0.01"
+    ],
+    "http_req_failed{endpoint:token}": [
+      "rate<0.01"
+    ],
+    "http_req_failed{endpoint:verify-phone}": [
+      "rate<0.01"
+    ]
+  },
+  "insecureSkipTLSVerify": true,
+  "totalDuration": "10m30s",
+  "maxVUs": 3300
+}

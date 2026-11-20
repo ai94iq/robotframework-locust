@@ -1,0 +1,23 @@
+{
+  "vus": 1,
+  "duration": null,
+  "iterations": 1,
+  "stages": null,
+  "scenarios": {
+    "default": {
+      "executor": "shared-iterations",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": null,
+      "tags": null,
+      "vus": 1,
+      "iterations": 1,
+      "maxDuration": null
+    }
+  },
+  "thresholds": null,
+  "insecureSkipTLSVerify": true,
+  "totalDuration": "10m30s",
+  "maxVUs": 1
+}

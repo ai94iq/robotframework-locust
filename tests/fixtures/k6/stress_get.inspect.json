@@ -1,0 +1,81 @@
+{
+  "vus": 10,
+  "duration": null,
+  "iterations": 5000,
+  "stages": null,
+  "scenarios": {
+    "default": {
+      "executor": "shared-iterations",
+      "startTime": null,
+      "gracefulStop": null,
+      "env": null,
+      "exec": null,
+      "tags": null,
+      "vus": 10,
+      "iterations": 5000,
+      "maxDuration": null
+    }
+  },
+  "thresholds": {
+    "http_req_duration{endpoint:get_admin_clients}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_organizations}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_policies}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_realms}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_resource_scopes}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_resources}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_roles}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_scopes}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_sessions}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_statistics}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_admin_users}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_auth_org_subtree}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_auth_sessions}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_certs}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_discovery}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_password_policy_keys}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_realm_password_policies}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_system_config_keys}": [
+      "p(95)<1000"
+    ],
+    "http_req_duration{endpoint:get_userinfo}": [
+      "p(95)<1000"
+    ]
+  },
+  "insecureSkipTLSVerify": true,
+  "totalDuration": "10m30s",
+  "maxVUs": 10
+}
