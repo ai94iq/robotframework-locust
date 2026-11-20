@@ -20,7 +20,9 @@ class _Total:
 
 
 def _local(state: str = "running") -> SimpleNamespace:
-    return SimpleNamespace(stats=SimpleNamespace(total=_Total()), user_count=3, state=state)
+    entries = {("register", "POST"): SimpleNamespace(num_requests=4, num_failures=1)}
+    return SimpleNamespace(stats=SimpleNamespace(total=_Total(), entries=entries),
+                           user_count=3, state=state)
 
 
 def test_snapshot_has_the_chart_values() -> None:
@@ -28,6 +30,13 @@ def test_snapshot_has_the_chart_values() -> None:
     assert {k: point[k] for k in ("rps", "fails", "p50", "p95", "users")} == {
         "rps": 2.5, "fails": 0.5, "p50": 400, "p95": 900, "users": 3}
     assert point["time"].endswith("+00:00")
+
+
+def test_snapshot_carries_the_stats_table() -> None:
+    table = feed.snapshot(_local())["table"]
+    assert [(r["name"], r["request_count"], r["failure_count"]) for r in table["rows"]] == [
+        ("register", 4, 1)]
+    assert table["aggregated"]["name"] == "Aggregated"
 
 
 def test_final_stats_line(tmp_path: Path) -> None:

@@ -2,6 +2,8 @@
 
 ## 0.1.0 (unreleased)
 
+- Locust Studio fills the Run tab stats table every second during a run, not
+  only when the run ends. The run feed carries the table with each point.
 - The library code is split by job: `builder.py` (build keywords),
   `checks.py` (stats and assert keywords), `parsing.py` (argument parsing) and
   `users.py` (Locust user classes). Keyword names and behavior are unchanged.

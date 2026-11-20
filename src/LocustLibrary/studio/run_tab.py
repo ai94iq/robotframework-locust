@@ -1,12 +1,11 @@
 """Run tab: run the open suite under Robot, or the Build tab's tasks in process, with live charts."""
 
-import os
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QThread, QTimer, Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
@@ -24,37 +23,7 @@ from LocustLibrary import feed
 
 from .live import Series, SuiteRun, Update, start_suite
 from .panels import Charts, fill_stats, stats_table
-
-
-class RunWorker(QThread):  # type: ignore[misc]
-    """Runs tasks built on the Build tab in process; the feed file carries the live charts."""
-
-    finished = Signal(object)
-    error = Signal(str)
-
-    def __init__(self, scenario_kwargs: dict[str, Any], feed_path: str) -> None:
-        super().__init__()
-        self.kwargs = scenario_kwargs
-        self.feed_path = feed_path
-
-    def run(self) -> None:
-        os.environ[feed.ENV] = self.feed_path
-        try:
-            from LocustLibrary import LocustLibrary
-
-            lib = LocustLibrary()
-            lib.create_load_test(self.kwargs["host"])
-            lib.set_wait_time(self.kwargs["wait_min"], self.kwargs["wait_max"])
-            for t in self.kwargs["tasks"]:
-                add = lib.add_get_request if t["method"] == "GET" else lib.add_post_request
-                add(t["name"], t["path"], weight=t["weight"])
-            lib.run_load_test(users=self.kwargs["users"], spawn_rate=self.kwargs["spawn_rate"],
-                              run_time=self.kwargs["run_time"])
-            self.finished.emit(lib.get_locust_stats())
-        except Exception as exc:  # noqa: BLE001
-            self.error.emit(str(exc))
-        finally:
-            os.environ.pop(feed.ENV, None)
+from .worker import RunWorker
 
 
 class RunTab(QWidget):  # type: ignore[misc]
@@ -174,6 +143,7 @@ class RunTab(QWidget):  # type: ignore[misc]
             self.series.add(point)
         if update.points:
             self.charts.draw(self.series)
+            fill_stats(self.stats_table, update.points[-1]["table"])
         if update.final:
             self._show_final(update.final)
 

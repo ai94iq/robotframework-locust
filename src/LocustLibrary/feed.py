@@ -12,6 +12,7 @@ from typing import Any
 import gevent
 
 from .scenario import Stats
+from .stats import _stats_from_env
 
 ENV = "LOCUSTLIBRARY_FEED"
 
@@ -23,7 +24,7 @@ def snapshot(local: Any) -> dict[str, Any]:
             "fails": total.current_fail_per_sec or 0,
             "p50": total.get_current_response_time_percentile(0.5) or 0,
             "p95": total.get_current_response_time_percentile(0.95) or 0,
-            "users": local.user_count or 0}
+            "users": local.user_count or 0, "table": _table(_stats_from_env(local))}
 
 
 def follow(local: Any, path: str) -> None:
@@ -35,10 +36,14 @@ def follow(local: Any, path: str) -> None:
         gevent.sleep(1)
 
 
+def _table(stats: Stats) -> dict[str, Any]:
+    return {"rows": [asdict(row) for row in stats.rows],
+            "aggregated": asdict(stats.aggregated) if stats.aggregated else None,
+            "fail_ratio": stats.fail_ratio}
+
+
 def write_final(path: str, stats: Stats) -> None:
-    final = {"rows": [asdict(row) for row in stats.rows],
-             "aggregated": asdict(stats.aggregated) if stats.aggregated else None,
-             "fail_ratio": stats.fail_ratio}
+    final = _table(stats)
     with open(path, "a", encoding="utf-8") as handle:
         handle.write(json.dumps({"final": final}) + "\n")
 
