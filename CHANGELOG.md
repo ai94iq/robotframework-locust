@@ -2,6 +2,11 @@
 
 ## 0.1.0 (unreleased)
 
+- The Locust Studio sidebar shows the real host of a suite whose host comes
+  from a resource file, such as `${HOST}`. Studio reads the suite with a
+  Robot dry run, which passes keyword arguments as written; the plan now
+  resolves them from the variables in scope and keeps the text as written
+  when a variable is unknown.
 - Locust Studio runs a suite on Linux. Run crashed there with a TypeError:
   importing Locust lets gevent blank the fork call of the standard
   subprocess module, and a child started with a working folder or a

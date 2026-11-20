@@ -42,6 +42,22 @@ def test_tasks_before_a_class_go_to_the_default(tmp_path: Path) -> None:
     assert plan.classes[0].tasks == ["Add Python Task: signupScenario"]
 
 
+def test_host_from_a_resource_is_resolved(tmp_path: Path) -> None:
+    (tmp_path / "vars.resource").write_text(
+        "*** Variables ***\n${HOST}    http://127.0.0.1:9\n", encoding="utf-8")
+    suite = tmp_path / "load.robot"
+    suite.write_text(SUITE.replace("Library    LocustLibrary\n",
+                                   "Library    LocustLibrary\nResource    vars.resource\n")
+                     .replace("http://127.0.0.1:9", "${HOST}", 1), encoding="utf-8")
+    assert read_suite(str(suite)).host == "http://127.0.0.1:9"
+
+
+def test_an_unknown_variable_stays_as_written(tmp_path: Path) -> None:
+    suite = tmp_path / "load.robot"
+    suite.write_text(SUITE.replace("http://127.0.0.1:9", "${NOPE}", 1), encoding="utf-8")
+    assert read_suite(str(suite)).host == "${NOPE}"
+
+
 def test_a_suite_without_load_keywords_is_empty(tmp_path: Path) -> None:
     suite = tmp_path / "none.robot"
     suite.write_text("*** Test Cases ***\nA\n    Log    hi\n", encoding="utf-8")

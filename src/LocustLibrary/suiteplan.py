@@ -8,6 +8,8 @@ import io
 from dataclasses import dataclass, field
 from typing import Any
 
+from robot.errors import VariableError
+from robot.libraries.BuiltIn import BuiltIn
 from robot.run import run
 
 _TASKS = {"Add Python Task", "Add Get Request", "Add Post Request", "Add Task"}
@@ -50,7 +52,15 @@ class _Collector:
 
     def start_library_keyword(self, _data: Any, implementation: Any, result: Any) -> None:
         if implementation.owner.name == "LocustLibrary":
-            self.plan.add(result.name, tuple(str(arg) for arg in result.args))
+            self.plan.add(result.name, tuple(_resolve(str(arg)) for arg in result.args))
+
+
+def _resolve(arg: str) -> str:
+    # A dry run passes arguments as written; values from resource files still sit in scope.
+    try:
+        return str(BuiltIn().replace_variables(arg))
+    except VariableError:
+        return arg
 
 
 def read_suite(path: str) -> SuitePlan:
