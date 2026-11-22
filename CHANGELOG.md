@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix: the generated k6 suite test is named "... - Mapped Thresholds Met", so it no longer claims unsupported thresholds were checked.
+- Docs: k6-converter.md sample report, suite and stub come from a real run on samples/k6/combined.js.
 - Fix: stop rule p999 now reads the 99.9th percentile, as the Should keywords do (was 9.99th).
 - Fix: rflocust-k6 keeps the HTTP calls of a function that calls a local helper; only the helper gets a hand port row.
 - Fix: rflocust-k6 writes a strict k6 `<` response time threshold as a maximum one ms lower; a strict error rate gets an approximate row.

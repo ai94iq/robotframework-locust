@@ -46,7 +46,7 @@ def test_layout_has_thin_suite_and_keywords(combined: emit.Conversion) -> None:
                                       "reports/combined.k6-report.md",
                                       "resources/python/combined_tasks.py", "tests/combined.robot"]
     suite = combined.files["tests/combined.robot"]
-    assert "Combined Load - Ramp To 20 Users - Thresholds Met\n" in suite
+    assert "Combined Load - Ramp To 20 Users - Mapped Thresholds Met\n" in suite
     assert suite.count("Resource") == 1
     assert suite.rstrip().endswith("    Test Combined Load")
 
@@ -120,7 +120,7 @@ def test_plain_function_becomes_client_calls() -> None:
     assert "    Set Wait Time    1.5s    1.5s\n" in keywords
     assert "users=2    spawn_rate=2    run_time=600s    iterations=10    max_users=100" in keywords
     assert "    Should Have No Failures\n" in keywords
-    assert "Plain Load - 10 Iterations By 2 Users - Thresholds Met" in done.files["tests/plain.robot"]
+    assert "Plain Load - 10 Iterations By 2 Users - Mapped Thresholds Met" in done.files["tests/plain.robot"]
     assert done.host == "https://h"
 
 

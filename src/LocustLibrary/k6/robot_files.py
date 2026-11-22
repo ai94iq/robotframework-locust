@@ -34,7 +34,7 @@ def suite(script: str, condition: str) -> str:
         "Resource            ../resources/resources.resource", "",
         f"Test Tags           {stem}    load    slow", "", "",
         "*** Test Cases ***",
-        f"{title} Load - {condition} - Thresholds Met",
+        f"{title} Load - {condition} - Mapped Thresholds Met",
         f"{SEP}[Documentation]    Runs the {script} profile and passes when every converted check holds.",
         f"{SEP}Test {title} Load",
     ]) + "\n"
