@@ -24,11 +24,14 @@ page covers how the conversion works, what it maps, and what you port by hand.
    tree-sitter and reads each exported function. It marks each function plain
    or hand port.
 3. The emitter (`src/LocustLibrary/k6/emit.py`) maps what k6 and LocustLibrary
-   share into Robot keywords. Every item it cannot map goes into the report.
+   share into Robot keywords. Most items it cannot map get a report row; the
+   dropped iteration caps in a mixed run are the one gap (see the mapping notes).
    `profile.py` maps scenarios and thresholds to keyword lines, and
    `robot_files.py` writes the suite, resources and Python tasks.
 
-The k6 binary must be on PATH. If it is not, the command stops with an error.
+The k6 binary must be on PATH. If it is not, the command stops with
+`k6 is not on PATH; k6 inspect is needed to read options`. The converter
+checks no k6 version. Install k6 from https://grafana.com/docs/k6/latest/set-up/install-k6/.
 `-e KEY=VALUE` pairs go to `k6 inspect` in sorted order.
 
 The command writes a project folder under `--out` (default `robot`). Each
@@ -46,13 +49,26 @@ stem here. Paths are relative to the project folder:
 | `reports/<stem>.k6-report.md` | One row per item: status and note |
 
 The condition in the test name describes the load, such as `Ramp To 20 Users`.
+The name does not mean every k6 threshold was checked. Unsupported thresholds
+are left out; the report lists them.
+
+Each run overwrites the suite, the collection and the tasks module for the
+script, and rebuilds `resources.resource`. Hand ports in
+`resources/python/<stem>_tasks.py` and edits to the collection are lost on a
+rerun. Copy them out first, or rerun with a different `--out`. Only the two
+variables files are kept.
 
 ## Mapping table
+
+k6 terms used below: a scenario is one named workload, and its `exec` function
+is the code each virtual user (VU) runs. An executor sets how a scenario
+schedules VUs. A threshold is a pass rule on a metric. Init code is the
+script's top-level code. See the k6 docs at https://grafana.com/docs/k6/latest/.
 
 | k6 | LocustLibrary | Report status |
 |---|---|---|
 | Scenario and its `exec` function | Add User Class with `weight` set to the peak VUs, then Add Python Task | mapped or hand port |
-| `ramping-vus` stages, all scenarios | Set Load Stages, user counts summed per stage | approximate when stage timings differ |
+| `ramping-vus` stages, when every scenario is `ramping-vus` | Set Load Stages, user counts summed per stage | approximate when stage timings differ |
 | `constant-vus` | Run Load Test with users and run_time | mapped |
 | `shared-iterations` | Run Load Test with users, run_time and iterations | mapped |
 | `arrival-rate` and per-VU executors | Run Load Test with looping users | approximate |
@@ -67,7 +83,10 @@ Notes on the rows:
 - Peak VUs are the highest stage target, else `vus`, else `maxVUs`. The weight
   is at least 1.
 - Iterations are summed only when every scenario is `shared-iterations`.
-  `constant-vus` scenarios get no iterations.
+  `constant-vus` scenarios get no iterations. In a mix of `constant-vus` and
+  `shared-iterations`, the iteration caps are dropped and the report has no row
+  for that. The run then stops on run_time alone: the summed peak VUs run for
+  the longest scenario duration, or 600 s (`load` in `profile.py`).
 - run_time is the longest scenario duration. When no scenario sets one, the
   run is 600 s (`load` in `profile.py`).
 - A mix of executors that includes `ramping-vus`, or any other mix that is not
@@ -120,8 +139,12 @@ that name, so a different name leaves the check with no row to read.
 
 ## Safety
 
-- Users above `--max-users` (default 100) are cut to that number. The report
-  gets a `clamped` row.
+- `--max-users` (default 100) caps the load. When every scenario is
+  ramping-vus (the staged path), each stage target is multiplied by
+  `max-users / peak` and rounded, so the ramp keeps its shape at a lower
+  height. On every other path (constant-vus, shared-iterations or a mix), the
+  total user count is cut to `max-users`. Both write a `clamped` row to the
+  report.
 - `Run Load Test` gets `max_users=<value>` from `--max-users` and refuses a run
   whose peak exceeds it. To change the ceiling, rerun the converter with a new
   `--max-users`, or edit the `max_users=` argument in the Run keyword of
@@ -203,5 +226,6 @@ Check Combined Load
     END
 ```
 
-Port the three stubs in `resources/python/combined_tasks.py`, then run the
-project from its folder with `robot -v ENV:dev robot/tests`.
+Port the three stubs in `robot/resources/python/combined_tasks.py`. Then, from
+the folder that holds `robot` (where you ran the converter), run
+`robot -v ENV:dev robot/tests`.

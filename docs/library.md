@@ -76,25 +76,43 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 | Take Shared Value | name, timeout=10s | Takes the oldest value under the name, waiting up to timeout for one. Each value goes to one taker. With none in time the keyword fails, so the task counts as a failure. Run Load Test starts with no values. |
 | Set On Start | keyword_name | Sets the keyword each user runs when it starts. |
 | Set On Stop | keyword_name | Sets the keyword each user runs when it stops. |
-| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100, stop_on_fail_ratio=0, fail_ratio_warmup=10s | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users. iterations caps the task runs for all users together. The log gets a stats table per request name and the first 3 calls of each name plus up to 50 failed calls, in RequestsLibrary style. Passwords, client secrets, tokens, OTP fields and auth headers show as `***`. With verify_tls off, it logs one warning per host. With stop_on_fail_ratio set, the run stops early when failures pass it. |
-| Get Locust Stats | none | Returns the stats rows, the aggregated row and the fail ratio as a dict. |
-| Get Aggregated Stats | none | Returns the aggregated stats row as a dict. |
+| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100, stop_on_fail_ratio=0, fail_ratio_warmup=10s | Runs the scenario headless. Refuses the run before it starts if the peak user count is above max_users (see [Several user classes](#several-user-classes) for the peak). iterations caps the task runs for all users together. The log gets a stats table per request name and the first 3 calls of each name plus up to 50 failed calls, in RequestsLibrary style. Values of the `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` headers, and the `password`, `client_secret`, `access_token`, `refresh_token`, `id_token` and `otp` fields of JSON or form bodies, show as `***`. URLs, query strings and other headers, such as `X-Api-Key`, are logged as sent. With verify_tls off, it logs one warning per host. With stop_on_fail_ratio set, the run stops early when failures pass it. |
+| Get Locust Stats | none | Returns a dict with `rows` (a list of row dicts, one per request name), `aggregated` (one row dict, or None) and `fail_ratio` (a fraction from 0 to 1). Returns an empty dict before Run Load Test. |
+| Get Aggregated Stats | none | Returns the aggregated row dict, or an empty dict before Run Load Test. |
 | Should Have No Failures | none | Fails if any request failed. |
 | Should Meet Response Time | endpoint, percentile, maximum | Fails if the percentile is above the maximum. Use an endpoint name, or `aggregated` for all requests. |
 | Should Meet Throughput | minimum | Fails if requests per second is below the minimum. |
 | Should Meet Error Rate | maximum, endpoint= | Fails if the error rate is above the maximum, such as `1%`. Checks all requests, or one endpoint. |
 | Export Report | base_path=locust | Writes `<base>_stats.csv` and the Locust HTML report `<base>.html` into the Robot output folder, links the HTML report in the log, and returns the base path. |
-| Start Locust Web | locustfile, port=8089 | Starts the Locust web UI in a subprocess, on 127.0.0.1. |
+| Start Locust Web | locustfile, port=8089 | Starts the Locust web UI for a locustfile (a path to an existing Python file) in a subprocess and returns at once. The UI is at `http://127.0.0.1:<port>`. A second call stops the first UI. |
 | Stop Locust Web | none | Stops the web UI that Start Locust Web started. |
-| Run Distributed | locustfile, processes=2 | Starts a master and worker processes on this machine. |
+| Run Distributed | locustfile, processes=2 | Starts a master and `processes` workers for a locustfile on this machine and returns at once. The master binds to 127.0.0.1 only. A second call stops the first set. |
 | Stop Distributed | none | Stops the master and the workers. |
 
 Argument formats:
 
 - `expected_status` takes one code (`200`), a comma list (`200, 204`),
   or a list.
+- `headers` takes a dictionary of header names and values, such as one made with
+  `Create Dictionary    Accept=application/json`.
+- `json` takes a dictionary or list; it is sent as a JSON body with
+  `Content-Type: application/json`.
+- `data` takes a dictionary, sent form-encoded, or a string, sent as is.
+- Example: `Add Post Request    login    /login    json=${body}    headers=${headers}`,
+  where `${body}` is `Create Dictionary    user=a    pass=b`.
 - Stages take `duration:users`, such as `2m:20`.
 - Percentiles take `50`, `90`, `95`, `99` or `999`, with or without the `p`.
+
+A stats row dict has the keys `name`, `request_count`, `failure_count`,
+`median`, `average`, `min`, `max`, `p50`, `p90`, `p95`, `p99` and `p999`
+(response times in milliseconds), and `rps` and `failures_s` (per second).
+
+Start Locust Web and Run Distributed run your own locustfile in separate
+Locust processes. The scenario that the Add and Set keywords build, the
+`max_users` check, the host allowlist, stop rules, shared values and user
+indexes do not apply to them, and the Should keywords do not read their
+stats. Stop them with Stop Locust Web and Stop Distributed, which wait up to
+10 seconds per process and then kill it.
 
 ## Several user classes
 
@@ -112,9 +130,13 @@ Add Get Request    health    /health
 Run Load Test    users=20    run_time=2m
 ```
 
-`weight` shares the users out by ratio. `fixed_count` gives a class an
-exact number of users. When the fixed counts add up to more than `users`,
-that sum is the peak that `max_users` checks.
+`fixed_count` gives a class an exact number of users, taken out of
+`users`, not added on top. Locust starts the fixed users first and shares
+the rest out by `weight` among the classes with no `fixed_count`. In the
+example, Checker gets 2 users and Browser gets the other 18. The peak that `max_users` checks is the higher of
+two numbers: the highest stage user count (or `users` when there are no
+stages), and the sum of the `fixed_count` values. In the example above the
+peak is 20, since 20 is higher than 2.
 
 ## Python tasks
 
@@ -143,7 +165,7 @@ Add Task runs a Robot keyword as the task instead.
 
 ## Data per user and shared data
 
-Users share one Robot process, so the library gives each task keyword its own
+Users of Run Load Test share one Robot process, so the library gives each task keyword its own
 numbers through keywords, not variables:
 
 - Get User Index returns the number of the user that runs the task. Use it to
@@ -174,8 +196,7 @@ Run Load Test writes to the Robot log:
 
 - a stats table per request name,
 - the first 3 calls of each name and up to 50 failed calls, in RequestsLibrary
-  style. Passwords, client secrets, tokens, OTP fields and auth headers show
-  as `***`.
+  style. Values of the `Authorization`, `Proxy-Authorization`, `Cookie` and `Set-Cookie` headers, and the `password`, `client_secret`, `access_token`, `refresh_token`, `id_token` and `otp` fields of JSON or form bodies, show as `***`. URLs, query strings and other headers, such as `X-Api-Key`, are logged as sent.
 
 Export Report writes `<base>_stats.csv` and the Locust HTML report
 `<base>.html` beside `log.html`, and links the HTML report in the log.

@@ -71,6 +71,4 @@ All sources, papers, and documentation referenced during the design and research
 
 ## Other
 
-- MaestroLibrary (PySide studio reference): D:\Work\personal-git-clones\robotframework-maestrolibrary
 - python-skills (wdm0006): https://github.com/wdm0006/python-skills
-- impeccable skill: C:\Users\abdoi\.config\opencode\skills\impeccable

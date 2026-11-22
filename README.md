@@ -63,8 +63,12 @@ robot home_load.robot
 ```
 
 The suite builds the users, runs them, then checks the numbers. Run Load Test
-logs a stats table and sample calls, with secrets masked. Export Report writes
-the Locust HTML report beside `log.html`.
+logs a stats table and sample calls. Auth and cookie headers and password
+or token fields show as `***`; URLs, query strings and other headers, such as
+`X-Api-Key`, are logged as sent. Export Report writes
+two files to Robot's output folder, beside `log.html`: `home-run_stats.csv`
+and the Locust HTML report `home-run.html`. The log links the report. With no
+name, the files are `locust_stats.csv` and `locust.html`.
 
 The library has 28 keywords: user classes, pacing, stop rules, Python tasks,
 per-user numbers, data handed between users, and checks for response time,
@@ -101,14 +105,22 @@ trust. See [docs/k6-converter.md](https://github.com/ai94iq/robotframework-locus
 
 ## Safety limits
 
-A load test can take a server down. These limits are built in:
+A load test can take a server down. One limit is on by default:
 
 - Run Load Test refuses a run above `max_users` (default 100).
-- Create Load Test refuses a host that is not on `allowed_hosts`.
-- `Add Stop Rule    p95 > 1s for 10s` and `stop_on_fail_ratio` stop a run
-  early.
+
+The others work only when you set them:
+
+- Create Load Test refuses a host that is not on `allowed_hosts` or
+  `LOCUSTLIBRARY_ALLOWED_HOSTS`. With neither set, any host is accepted and
+  one warning is logged. Suites made by the k6 converter set no list.
+- `Add Stop Rule    p95 > 1s for 10s` and `stop_on_fail_ratio` (default 0,
+  off) stop a run early.
 - `expected_text` fails a 200 that carries an error page.
 - The Locust web UI and distributed mode bind 127.0.0.1 only.
+
+Start Locust Web and Run Distributed run your own locustfile as it is: the
+`max_users` ceiling, the host allowlist and stop rules do not apply to them.
 
 Read [docs/safety.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/safety.md) before you point a run at a host you do
 not own.

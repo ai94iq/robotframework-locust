@@ -1,6 +1,9 @@
 # Safety limits
 
 Read these before you run a test against a host you do not own.
+The ceiling, allowlist, breaker and stop rules apply to Create Load Test and
+Run Load Test, which Studio's run tab also calls. Start Locust Web and Run
+Distributed run your locustfile as it is, with none of these limits.
 - **Peak user ceiling.** Run Load Test refuses a run before Locust starts when
   its peak user count is above `max_users` (default 100). The peak is the
   highest stage user count, or `users` when there are no stages, or the sum
@@ -14,7 +17,8 @@ Read these before you run a test against a host you do not own.
 - **Failure breaker.** `stop_on_fail_ratio` on Run Load Test, such as `20%`,
   stops the run when the share of failed requests goes over it. The check
   starts after `fail_ratio_warmup` (default 10s) and runs every half second.
-  The log shows the reason as a warning. The default 0 turns it off.
+  The log shows the reason as a warning. A run the breaker stops does not
+  fail Run Load Test; only a stop rule does that. The default 0 turns it off.
 - **Stop rules.** `Add Stop Rule    p95 > 1s for 10s` stops the run once the
   value stays over the limit for the whole window, checked every half second.
   Metrics: `pN` (Locust's current response time percentile, `ms` or `s`),
@@ -33,6 +37,11 @@ Read these before you run a test against a host you do not own.
 - **Busy load generator.** When Locust sees this machine's CPU above 90%,
   Run Load Test logs a warning. Response times from such a run can be too
   high, because the generator itself is slow.
+- **Code that runs.** Add Python Task imports the module you name and runs
+  its function. The k6 converter runs `k6 inspect`, which runs the script's
+  init code. Open suite in Studio reads the suite with a Robot dry run, which
+  imports every Python library and variable file the suite names and so runs
+  their module code. Use these only with code and suites you trust.
 - **Web UI on loopback.** Start Locust Web binds 127.0.0.1 only. The keyword
   has no host argument, so other machines cannot reach the web UI through it.
 - **Distributed mode stays on this machine.** Run Distributed binds the master

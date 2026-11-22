@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Docs: user guides now match the code on safety limits, masking, Studio Stop, k6 reruns and thresholds.
 - Fix: rflocust-k6 no longer stops on a k6 threshold it cannot read; the report lists it as unsupported.
 
 ## 1.0.3 (2026-11-20)
