@@ -69,9 +69,12 @@ def test_threshold_forms(metric: str, expr: str, parsed: tuple[Any, ...]) -> Non
     assert (one.metric, one.endpoint, one.stat, one.limit) == parsed
 
 
-def test_unknown_threshold_is_rejected() -> None:
-    with pytest.raises(ValueError, match="threshold"):
-        options.parse_thresholds({"http_req_duration": ["p95 under 1s"]})
+def test_unparsed_thresholds_are_kept_aside() -> None:
+    opts = options.parse_options({"thresholds": {
+        "http_req_duration": ["p(95)<500", "p95 under 1s"], "iterations{scenario:a}": ["count>1"]}})
+    assert [(t.metric, t.stat) for t in opts.thresholds] == [("http_req_duration", "p95")]
+    assert opts.unparsed_thresholds == (("http_req_duration", "p95 under 1s"),
+                                        ("iterations{scenario:a}", "count>1"))
 
 
 def test_inspect_runs_k6_with_env_and_timeout(monkeypatch, tmp_path: Path) -> None:

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: rflocust-k6 no longer stops on a k6 threshold it cannot read; the report lists it as unsupported.
+
 ## 1.0.3 (2026-11-20)
 
 - Docs: README images use raw file URLs, so the PyPI page shows them.

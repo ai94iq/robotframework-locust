@@ -152,6 +152,12 @@ def test_big_stages_scale_down_to_the_ceiling() -> None:
     assert "Ramp To 400 Users" in raised.files["tests/x.robot"]
 
 
+def test_unparsed_threshold_is_an_unsupported_row() -> None:
+    opts = options.parse_options({"thresholds": {"http_req_duration": ["p95 under 1s"]}})
+    report = emit.convert("x.js", opts, []).files["reports/x.k6-report.md"]
+    assert "| threshold http_req_duration | unsupported | cannot read p95 under 1s |" in report
+
+
 def test_single_and_unsupported_thresholds() -> None:
     opts = options.K6Options((), (options.Threshold("http_req_duration", "", "avg", 300.0),
                                   options.Threshold("iterations", "", "rate", 1.0),

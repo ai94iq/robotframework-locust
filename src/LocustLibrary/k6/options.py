@@ -54,6 +54,7 @@ class K6Options:
     insecure: bool
     total_s: float
     max_vus: int
+    unparsed_thresholds: tuple[tuple[str, str], ...] = ()
 
 
 def go_seconds(text: str) -> float:
@@ -75,6 +76,20 @@ def _threshold(metric: str, expr: str) -> Threshold:
 
 def parse_thresholds(raw: dict[str, list[str]] | None) -> tuple[Threshold, ...]:
     return tuple(_threshold(m, e) for m, exprs in sorted((raw or {}).items()) for e in exprs)
+
+
+def split_thresholds(raw: dict[str, list[str]] | None
+                     ) -> tuple[tuple[Threshold, ...], tuple[tuple[str, str], ...]]:
+    """Thresholds this converter reads, and the (metric, expression) pairs it cannot."""
+    parsed: list[Threshold] = []
+    unparsed: list[tuple[str, str]] = []
+    for metric, exprs in sorted((raw or {}).items()):
+        for expr in exprs:
+            try:
+                parsed.append(_threshold(metric, expr))
+            except ValueError:
+                unparsed.append((metric, expr))
+    return tuple(parsed), tuple(unparsed)
 
 
 def _rate(raw: dict[str, Any]) -> float:
@@ -106,12 +121,14 @@ def _scenario(name: str, raw: dict[str, Any]) -> K6Scenario:
 
 def parse_options(data: dict[str, Any]) -> K6Options:
     scenarios = data.get("scenarios") or {}
+    thresholds, unparsed = split_thresholds(data.get("thresholds"))
     return K6Options(
         scenarios=tuple(_scenario(n, scenarios[n]) for n in sorted(scenarios)),
-        thresholds=parse_thresholds(data.get("thresholds")),
+        thresholds=thresholds,
         insecure=bool(data.get("insecureSkipTLSVerify")),
         total_s=go_seconds(data["totalDuration"]) if data.get("totalDuration") else 0.0,
         max_vus=int(data.get("maxVUs") or 0),
+        unparsed_thresholds=unparsed,
     )
 
 
