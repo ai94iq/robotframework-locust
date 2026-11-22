@@ -67,36 +67,50 @@ are required. Time values take `500ms`, `30s`, `2m`, `1h`, or plain seconds.
 One exception: a stop rule window takes seconds with an `s` only (`for 60s`),
 and a stop rule limit takes `ms`, `s` or `%`.
 
-| Keyword | Arguments | What it does |
-|---|---|---|
-| Create Load Test | host, verify_tls=True, proxy=, allowed_hosts=, no_proxy= | Starts a new scenario and drops the one before it. See [Create Load Test details](#create-load-test-details). |
-| Add User Class | name, weight=1, fixed_count=0 | Starts a user class. Later tasks and waits belong to it. |
-| Set Wait Time | minimum, maximum | Think time between tasks of the current user class, a random time from minimum to maximum. Optional: with no call, a class waits 1 to 3 seconds. A later call replaces the earlier one. |
-| Set Pacing | interval | Starts a task run every interval per user, whatever the response time (Locust constant_pacing). A run that takes longer starts the next at once. For the class, pacing wins over Set Wait Time, whichever is called first. A later call replaces the interval. |
-| Add Stop Rule | rule | Adds a rule; each call adds one more. The form is `<metric> > <limit> for <window>`. Metrics are `pN` (a percentile, such as `p95`), `fail`, `rcNNN` (a status code share; `?` and `*` match a digit), `cpu`, `mem` and `idle`. See the [metric list](safety.md#limits-during-the-run). Stops the run once the rule holds for its whole window, such as `p95 > 1s for 10s`, `idle > 30s` or `rc5?? > 20% for 5s, stop as passed`. `idle` is the time with no completed response. By default a rule that stops the run also fails Run Load Test; `, stop as passed` only stops it. See [Safety limits](safety.md). |
-| Set Load Stages | *stages | Ramps users over `duration:users` stages, such as `2m:20`. With stages, Run Load Test ignores users, spawn rate and run time. A later call replaces all stages. |
-| Add Get Request | name, path, weight=1, expected_status=200, headers=, expected_text= | Adds a GET task. Only the listed status codes pass. With expected_text, the body must also contain that text. |
-| Add Post Request | name, path, weight=1, expected_status=200, headers=, json=, data=, expected_text= | Adds a POST task with a JSON or form body. With expected_text, the body must also contain that text. |
-| Add Task | name, keyword, weight=1 | Adds a task that runs a Robot Framework keyword. keyword is required; an empty value is refused. Each run shows in the stats as an `RF` request named after the keyword. A keyword that fails counts as a failed `RF` request. |
-| Add Python Task | name, function, weight=1 | Adds a task that calls `module.function` with the Locust user. |
-| Get User Index | | Inside a task keyword: the number of the virtual user running it, unique within the run. Use it for a unique value or data row per user. Python tasks read `user.index`. |
-| Get User Iteration | | Inside a task keyword: how many task runs this user has started, counting this one. Python tasks read `user.iteration`. |
-| Put Shared Value | name, value | Adds a value under a name for another user's step to take, such as an id one step created. A name holds at most `shared_limit` values (a library import argument, default 10000, 0 for no limit). One more fails the keyword. The limit is per name; nothing caps the total over all names. |
-| Take Shared Value | name, timeout=10s | Takes the oldest value under the name, waiting up to timeout for one. The wait yields, so other users keep running while one user waits. Each value goes to one taker. With none in time the keyword fails and records a failed `SHARED` request named `Take Shared Value <name>`, so the task counts as a failure. Run Load Test starts with no values. |
-| Set On Start | keyword_name | Sets the keyword each user of the current user class runs when it starts. Call it after Add User Class; with no Add User Class, it applies to the default class: the class that Create Load Test makes. The first Add User Class call drops the default class if it has no tasks yet. A later call replaces the keyword. |
-| Set On Stop | keyword_name | Sets the keyword each user of the current user class runs when it stops. Scope and order are the same as for Set On Start. |
-| Run Load Test | users=10, spawn_rate=1.0, run_time=30s, iterations=0, max_users=100, stop_on_fail_ratio=0, fail_ratio_warmup=10s, breaker_fails=True, fail_on_busy_cpu=False | Runs the scenario headless and waits until it ends. See [Run Load Test details](#run-load-test-details). |
-| Get Locust Stats | none | Returns a dict with `rows` (a list of row dicts, one per request name), `aggregated` (one row dict, or None) and `fail_ratio` (a fraction from 0 to 1). Returns an empty dict before Run Load Test. |
-| Get Aggregated Stats | none | A shorthand for the `aggregated` value of Get Locust Stats. Returns an empty dict before Run Load Test. |
-| Should Have No Failures | none | Fails if any request failed. |
-| Should Meet Response Time | endpoint, percentile, maximum | Fails if the percentile is above the maximum. Use an endpoint name, or `aggregated`, `total` or an empty name for all requests. |
-| Should Meet Throughput | minimum | Fails if requests per second over the whole run is below the minimum. The minimum is a plain number in requests per second, such as `5`. |
-| Should Meet Error Rate | maximum, endpoint= | Fails if the error rate is above the maximum, such as `1%`. Checks all requests, or one endpoint. |
-| Export Report | base_path=locust | Writes `<base>_stats.csv` and the Locust HTML report `<base>.html` into the Robot output folder, links the HTML report in the log, and returns the base path. Files with the same base are overwritten. Before Run Load Test it fails. The HTML file is written only when Locust made a report. |
-| Start Locust Web | locustfile, port=8089, host=, allowed_hosts= | Starts the Locust web UI for a locustfile (a path to an existing file) in a subprocess and returns at once. The UI is at `http://127.0.0.1:<port>`. The UI has no login and no user ceiling: any account or process on this machine can open it and start a run of any size. A second call stops the first UI. A relative path is read from the current working directory. The library does not check the port; a busy port makes the Locust process fail. host is the target URL, checked against allowed_hosts like Create Load Test. |
-| Stop Locust Web | none | Stops the web UI that Start Locust Web started. |
-| Run Distributed | locustfile, processes=2, host=, allowed_hosts=, users=0, max_users=100 | Starts a master and `processes` workers for a locustfile on this machine and returns at once. The master binds to 127.0.0.1 only. A second call stops the first set. A relative path is read from the current working directory. The master uses port 5557; the library does not check that it is free. host is checked like Create Load Test. users=0 starts no users; the run waits for a start from the master's web UI. users above 0 makes the master start that many users at once (`--autostart`). users above max_users is refused before the start. |
-| Stop Distributed | none | Stops the master and the workers. |
+**Build a scenario**
+
+- **Create Load Test**: starts a new scenario for one host and drops the one before it. See [Create Load Test details](#create-load-test-details).
+- **Add User Class**: starts a user class. Later tasks and waits belong to it.
+- **Set Wait Time**: sets the think time between tasks of the current class, a random time in a range. Without it, a class waits 1 to 3 seconds.
+- **Set Pacing**: starts a task run every interval per user, whatever the response time. Pacing wins over Set Wait Time for the class.
+- **Add Stop Rule**: adds a rule that stops the run when a metric holds for its whole window, such as `p95 > 1s for 10s`. See the [metric list](safety.md#limits-during-the-run).
+- **Set Load Stages**: ramps users over stages, such as `2m:20`. A later call replaces all stages.
+- **Add Get Request**: adds a GET task and the status codes that pass.
+- **Add Post Request**: adds a POST task with a JSON or form body.
+- **Add Task**: adds a task that runs a Robot Framework keyword.
+- **Add Python Task**: adds a task that calls a function in a Python module with the Locust user.
+- **Set On Start**: sets the keyword each user of the current class runs when it starts.
+- **Set On Stop**: sets the keyword each user of the current class runs when it stops.
+
+**Per-user data and shared values**
+
+- **Get User Index**: inside a task keyword, returns the number of the virtual user, unique within the run.
+- **Get User Iteration**: inside a task keyword, returns how many task runs this user has started.
+- **Put Shared Value**: adds a value under a name for another user's step to take.
+- **Take Shared Value**: takes the oldest value under a name, waiting up to a timeout for one.
+
+**Run and check**
+
+- **Run Load Test**: runs the scenario headless and waits until it ends. See [Run Load Test details](#run-load-test-details).
+- **Get Locust Stats**: returns the stats of the last run: one row per request name, the total row and the fail ratio.
+- **Get Aggregated Stats**: returns the total row of the last run.
+- **Should Have No Failures**: fails if any request failed.
+- **Should Meet Response Time**: fails if a percentile of one endpoint, or of all requests, is above a maximum.
+- **Should Meet Throughput**: fails if requests per second over the run are below a minimum.
+- **Should Meet Error Rate**: fails if the error rate is above a maximum, for all requests or one endpoint.
+
+**Report**
+
+- **Export Report**: writes the stats CSV and the Locust HTML report into the Robot output folder and links the report in the log.
+
+**Web UI and distributed**
+
+- **Start Locust Web**: starts the Locust web UI for a locustfile and returns at once. The UI has no login and no user limit.
+- **Stop Locust Web**: stops the web UI that Start Locust Web started.
+- **Run Distributed**: starts a master and its workers for a locustfile on this machine and returns at once.
+- **Stop Distributed**: stops the master and the workers.
+
+For the arguments of each keyword, see [keywords.html](keywords.html).
 
 Argument formats:
 

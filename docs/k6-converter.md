@@ -15,29 +15,13 @@ page covers how the conversion works, what it maps, and what you port by hand.
 
 ## How it works
 
-1. The options reader first reads `export const options` straight from the
-   script, when every value in it is a literal (`static_options` in
-   `src/LocustLibrary/k6/scan.py`). This runs no k6 and needs no
-   `--trust-script`. The report row is `options | read statically`.
-   When an option is computed, the reader falls back to
-   `k6 inspect --execution-requirements`, which gives the resolved options:
-   scenarios, thresholds, the TLS flag and the total duration. The call has a
-   60 s timeout (`run_inspect` in `src/LocustLibrary/k6/options.py`). k6 runs
-   the script's init (top-level) code as you, so convert only scripts you trust
-   (see [safety.md](safety.md)). The fallback runs only when you pass
-   `--trust-script`. Without it, the command exits 1 with a one-line reason
-   that names the option that is not a literal, and writes no files. The report
-   row is then `options | from k6 inspect`. The converter never calls `k6 run`. k6 gets only these environment variables:
-   `PATH`, `SYSTEMROOT`, `HOME`, `USERPROFILE`, `TEMP`, `TMP` and `TMPDIR`, when
-   set. `__ENV` in init code sees those and the `-e` pairs, nothing else.
-2. The scanner (`src/LocustLibrary/k6/scan.py`) parses the script with
-   tree-sitter and reads each exported function. It marks each function plain
-   (converted to Python calls) or hand port (you write it). See
-   [Plain and hand port functions](#plain-and-hand-port-functions).
-3. The emitter (`src/LocustLibrary/k6/emit.py`) maps what k6 and LocustLibrary
-   share into Robot keywords. Every item it cannot map exactly gets a report row.
-   `profile.py` maps scenarios and thresholds to keyword lines, and
-   `robot_files.py` writes the suite, resources and Python tasks.
+`rflocust-k6` reads the script's options and exported functions and writes a
+Robot project: a suite, keyword collections, resources and a tasks module.
+Plain HTTP calls, stages and thresholds become Robot keywords, and anything it
+cannot map gets a row in the report. It never runs the script with `k6 run`.
+When the options are computed, it runs the script's top-level code through
+`k6 inspect`, so that case needs `--trust-script` and the k6 binary (see
+[safety.md](safety.md)).
 
 A script path that does not exist stops the command with
 `rflocust-k6: no such file: <path>`.
