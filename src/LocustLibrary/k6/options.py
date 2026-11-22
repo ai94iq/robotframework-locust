@@ -19,7 +19,7 @@ _EXEC_NAME = re.compile(r"[A-Za-z_]\w*", re.ASCII)
 _SCENARIO_NAME = re.compile(r"[\w-]+", re.ASCII)
 # init code can read __ENV, so k6 gets only what it needs to start.
 _INSPECT_ENV = ("PATH", "SYSTEMROOT", "HOME", "USERPROFILE", "TEMP", "TMP", "TMPDIR")
-_EXPR = re.compile(r"^(p\((\d+(?:\.\d+)?)\)|avg|med|min|max|rate)\s*<=?\s*(\d+(?:\.\d+)?)$")
+_EXPR = re.compile(r"^(p\((\d+(?:\.\d+)?)\)|avg|med|min|max|rate)\s*(<=?)\s*(\d+(?:\.\d+)?)$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +45,7 @@ class Threshold:
     endpoint: str
     stat: str
     limit: float
+    strict: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,7 +72,8 @@ def _threshold(metric: str, expr: str) -> Threshold:
         raise ValueError(f"unsupported threshold {metric}: {expr}")
     percentile = expr_match.group(2)
     stat = "p" + percentile.replace(".", "") if percentile else expr_match.group(1)
-    return Threshold(name.group(1), name.group(2) or "", stat, float(expr_match.group(3)))
+    return Threshold(name.group(1), name.group(2) or "", stat, float(expr_match.group(4)),
+                     expr_match.group(3) == "<")
 
 
 def parse_thresholds(raw: dict[str, list[str]] | None) -> tuple[Threshold, ...]:

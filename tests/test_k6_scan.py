@@ -45,10 +45,10 @@ def test_calls_keep_method_url_tag_and_body(found: dict[str, scan.ExecFunction])
     assert post.headers == {"Content-Type": "application/json"}
 
 
-def test_function_calling_helpers_needs_a_hand_port(found: dict[str, scan.ExecFunction]) -> None:
+def test_helper_call_keeps_the_function_plain(found: dict[str, scan.ExecFunction]) -> None:
     token = found["tokenScenario"]
-    assert not token.simple
-    assert token.reason == "line 16: tokenFlow() is not an HTTP call, check or sleep"
+    assert token.simple
+    assert token.helpers == (("tokenFlow", 16),)
     assert token.think_s == 1.0
 
 
@@ -62,6 +62,13 @@ def test_what_makes_a_function_need_a_hand_port(body: str, reason: str) -> None:
     (only,) = scan.scan_source(f"export default function () {{ {body} }}")
     assert only.simple is (reason == "")
     assert reason in only.reason
+
+
+def test_helper_called_with_arguments_needs_hand_port() -> None:
+    (only,) = scan.scan_source('export default function () { login("u"); }')
+    assert not only.simple
+    assert only.reason == "line 1: login() is not an HTTP call, check or sleep"
+    assert only.helpers == ()
 
 
 def test_array_body_and_shorthand_pair() -> None:

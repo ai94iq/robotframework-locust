@@ -127,3 +127,11 @@ def test_a_failed_stop_fails_the_keyword(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_a_rule_needs_a_load_test_first() -> None:
     with pytest.raises(RuntimeError, match="Create Load Test"):
         LocustLibrary().add_stop_rule("cpu > 90%")
+
+
+def test_p999_rule_reads_the_99_9th_percentile() -> None:
+    local = _local()
+    shares: list[float] = []
+    local.stats.total.get_current_response_time_percentile = shares.append
+    RuleWatch([parse_rule("p999 > 1s"), parse_rule("p99.9 > 1s")], local).check(1)
+    assert shares == pytest.approx([0.999, 0.999])

@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 import robot
 
-from LocustLibrary.k6 import emit, options
+from LocustLibrary.k6 import emit, options, profile
 from LocustLibrary.k6.scan import ExecFunction, HttpCall
 from LocustLibrary.scenario import Stage
 
@@ -63,7 +63,7 @@ def test_thresholds_loop_over_listed_endpoints(combined: emit.Conversion) -> Non
     keywords = _keywords(combined, "combined")
     assert "@{COMBINED_CHECK_1_ENDPOINTS}    register    token\n...    verify-phone" in keywords
     assert "    FOR    ${endpoint}    IN    @{COMBINED_CHECK_1_ENDPOINTS}\n" in keywords
-    assert "        Should Meet Response Time    ${endpoint}    p95    1000ms\n" in keywords
+    assert "        Should Meet Response Time    ${endpoint}    p95    999ms\n" in keywords
     assert "        Should Meet Error Rate    1%    endpoint=${endpoint}\n" in keywords
 
 
@@ -178,3 +178,33 @@ def test_report_escapes_pipes() -> None:
     done = emit.convert("x.js", options.K6Options((a,), (), False, 0.0, 1), [fn])
     assert "a // b is not a call" in done.files["reports/x.k6-report.md"]
     assert "1 User For 5s" in done.files["tests/x.robot"]
+
+
+def test_helper_call_keeps_http_calls_and_gets_a_report_row() -> None:
+    opts = options.K6Options((options.K6Scenario("token", "constant-vus", "tokenScenario",
+                                                 vus=1, duration_s=10),), (), False, 0.0, 1)
+    fn = ExecFunction("tokenScenario", 3, (HttpCall("GET", "https://h/t", "t"),),
+                      helpers=(("tokenFlow", 4),))
+    done = emit.convert("helper.js", opts, [fn])
+    tasks = done.files["resources/python/helper_tasks.py"]
+    assert "user.client.get('https://h/t', name='t')" in tasks
+    assert "NotImplementedError" not in tasks
+    report = done.files["reports/helper.k6-report.md"]
+    assert "| helper tokenFlow | hand port | helper.js line 4: tokenFlow() is not converted |" in report
+
+
+def test_strict_threshold_emits_a_strict_check() -> None:
+    raw = {"http_req_duration": ["p(95)<800", "p(99)<=900"], "http_req_failed": ["rate<0.01"]}
+    report = profile.Report()
+    lines, _ = profile.checks(options.parse_thresholds(raw), "S", report)
+    assert "Should Meet Response Time    aggregated    p95    799ms" in lines
+    assert "Should Meet Response Time    aggregated    p99    900ms" in lines
+    assert ("threshold http_req_failed rate", "approximate",
+            "k6 < is strict; the check also passes at exactly 1%") in report.rows
+
+
+@pytest.mark.parametrize("executor", ["constant-vus", "shared-iterations"])
+def test_plain_executors_get_a_mapped_row(executor: str) -> None:
+    report = profile.Report()
+    profile.load((options.K6Scenario("a", executor, vus=2, iterations=4, duration_s=5),), 10, report)
+    assert report.rows[0][:2] == ("executors", "mapped")

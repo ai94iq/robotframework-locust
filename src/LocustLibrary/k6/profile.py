@@ -39,7 +39,7 @@ def _peak(scenario: K6Scenario) -> int:
 
 
 def classes(scenarios: tuple[K6Scenario, ...], by_name: dict[str, ExecFunction],
-            module: str, report: Report) -> list[str]:
+            module: str, report: Report, script: str = "") -> list[str]:
     lines: list[str] = []
     for s in scenarios:
         fn = by_name.get(s.exec_name)
@@ -51,6 +51,9 @@ def classes(scenarios: tuple[K6Scenario, ...], by_name: dict[str, ExecFunction],
             report.add(f"scenario {s.name}", "hand port", f"exec function {s.exec_name} not found")
         elif fn.simple:
             report.add(f"scenario {s.name}", "mapped", f"{len(fn.calls)} HTTP calls")
+            for helper, line in fn.helpers:
+                report.add(f"helper {helper}", "hand port",
+                           f"{script} line {line}: {helper}() is not converted")
         else:
             report.add(f"scenario {s.name}", "hand port", fn.reason)
     return lines
@@ -64,7 +67,9 @@ def load(scenarios: tuple[K6Scenario, ...], max_users: int,
     users = sum(_peak(s) for s in scenarios)
     seconds = max((s.duration_s for s in scenarios), default=0.0) or 600.0
     iterations = sum(s.iterations for s in scenarios) if kinds <= {"shared-iterations"} else 0
-    if not kinds <= {"shared-iterations", "constant-vus"}:
+    if kinds <= {"shared-iterations", "constant-vus"}:
+        report.add("executors", "mapped", f"{', '.join(sorted(kinds))} run as {users} users")
+    else:
         report.add("executors", "approximate",
                    f"{', '.join(sorted(kinds))} run as {users} looping users; Locust has no arrival rate")
     if users > max_users:
@@ -105,9 +110,14 @@ def checks(thresholds: tuple[Threshold, ...], prefix: str,
     for t in thresholds:
         item = f"threshold {t.metric} {t.stat}"
         if t.metric == "http_req_duration" and t.stat in _PERCENTILES:
-            key: tuple[str, ...] = ("Should Meet Response Time", "${endpoint}", t.stat, f"{t.limit:g}ms")
+            # Locust percentiles are whole ms, so a strict k6 < limit is one ms lower.
+            limit = t.limit - 1 if t.strict else t.limit
+            key: tuple[str, ...] = ("Should Meet Response Time", "${endpoint}", t.stat, f"{limit:g}ms")
         elif t.metric == "http_req_failed" and t.stat == "rate":
             key = ("Should Meet Error Rate", f"{t.limit * 100:g}%", "endpoint=${endpoint}")
+            if t.strict:
+                report.add(item, "approximate",
+                           f"k6 < is strict; the check also passes at exactly {t.limit * 100:g}%")
         else:
             report.add(item, "unsupported", "no LocustLibrary check for this metric")
             continue

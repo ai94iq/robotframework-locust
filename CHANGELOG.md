@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fix: stop rule p999 now reads the 99.9th percentile, as the Should keywords do (was 9.99th).
+- Fix: rflocust-k6 keeps the HTTP calls of a function that calls a local helper; only the helper gets a hand port row.
+- Fix: rflocust-k6 writes a strict k6 `<` response time threshold as a maximum one ms lower; a strict error rate gets an approximate row.
+- Fix: rflocust-k6 reports constant-vus and shared-iterations as mapped executors.
+
 - Docs: user guides now match the code on safety limits, masking, Studio Stop, k6 reruns and thresholds.
 - Fix: rflocust-k6 no longer stops on a k6 threshold it cannot read; the report lists it as unsupported.
 

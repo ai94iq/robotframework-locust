@@ -43,7 +43,7 @@ def convert(script: str, opts: K6Options, functions: list[ExecFunction],
     for metric, expr in opts.unparsed_thresholds:
         report.add(f"threshold {metric}", "unsupported", f"cannot read {expr}")
     checks, lists = profile.checks(opts.thresholds, stem.upper(), report)
-    classes = profile.classes(opts.scenarios, by_name, f"{stem}_tasks", report)
+    classes = profile.classes(opts.scenarios, by_name, f"{stem}_tasks", report, script)
     steps = profile.Steps(classes, load, checks, condition, lists)
     host = _host(functions, report)
     names = list(dict.fromkeys(s.exec_name for s in opts.scenarios))

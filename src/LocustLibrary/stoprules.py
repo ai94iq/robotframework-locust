@@ -36,6 +36,13 @@ def parse_rule(text: str) -> StopRule:
                     found["status"] != "passed", text.strip())
 
 
+def _share(digits: str) -> float:
+    """p999 is the 99.9th percentile, as in the Should keywords; p99.9 reads the same."""
+    if "." not in digits and len(digits) > 2:
+        digits = f"{digits[:2]}.{digits[2:]}"
+    return float(digits) / 100
+
+
 class RuleWatch:
     """Checks every rule on each tick; the first rule that held for its window names the stop."""
 
@@ -74,7 +81,7 @@ class RuleWatch:
         codes, self._seen["codes"] = self._codes[self._seen["codes"]:], len(self._codes)
         for rule in self.rules:
             if rule.metric.startswith("p"):
-                share = float(rule.metric[1:]) / 100
+                share = _share(rule.metric[1:])
                 values[rule.metric] = self.local.stats.total.get_current_response_time_percentile(share)
             elif rule.metric.startswith("rc") and codes:
                 hits = sum(fnmatch.fnmatch(str(code), rule.metric[2:]) for code in codes)

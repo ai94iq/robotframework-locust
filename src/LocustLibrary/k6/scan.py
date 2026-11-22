@@ -38,6 +38,7 @@ class ExecFunction:
     calls: tuple[HttpCall, ...] = ()
     think_s: float = 0.0
     reason: str = ""
+    helpers: tuple[tuple[str, int], ...] = ()
 
     @property
     def simple(self) -> bool:
@@ -97,6 +98,7 @@ def _scan_body(name: str, function: Node, constants: dict[str, float]) -> ExecFu
     body = function.child_by_field_name("body")
     statements = body.named_children if body else []
     calls: list[HttpCall] = []
+    helpers: list[tuple[str, int]] = []
     think_s, reason = 0.0, ""
     for statement in statements:
         try:
@@ -104,14 +106,17 @@ def _scan_body(name: str, function: Node, constants: dict[str, float]) -> ExecFu
         except _NotPlain as err:
             reason = reason or f"line {statement.start_point.row + 1}: {err}"
             continue
-        if isinstance(found, HttpCall):
+        if isinstance(found, str):
+            helpers.append((found, statement.start_point.row + 1))
+        elif isinstance(found, HttpCall):
             calls.append(found)
         elif isinstance(found, float):
             think_s = found
-    return ExecFunction(name, function.start_point.row + 1, tuple(calls), think_s, reason)
+    return ExecFunction(name, function.start_point.row + 1, tuple(calls), think_s, reason,
+                        tuple(helpers))
 
 
-def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float | None:
+def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float | str | None:
     expr = _expression(statement)
     if expr is None or expr.type != "call_expression":
         raise _NotPlain(statement.type if expr is None else f"{_text(expr)} is not a call")
@@ -125,6 +130,10 @@ def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float
     verb = callee.removeprefix("http.")
     if callee.startswith("http.") and verb in _HTTP and args:
         return _http_call(_HTTP[verb], args)
+    function = expr.child_by_field_name("function")
+    if function is not None and function.type == "identifier" and not args:
+        # A local helper call: the report lists it; the calls around it still convert.
+        return callee
     raise _NotPlain(f"{callee}() is not an HTTP call, check or sleep")
 
 
