@@ -1,6 +1,7 @@
 # Commands
 
-The library is used from Robot Framework. The package adds two commands.
+Robot Framework runs the suites. The package adds two commands: `locust-studio`
+and `rflocust-k6`.
 
 | Command | From | What it does |
 |---|---|---|
@@ -11,7 +12,7 @@ The library is used from Robot Framework. The package adds two commands.
 ## rflocust-k6
 
 ```
-rflocust-k6 [-h] [--out OUT] [-e ENV] [--max-users MAX_USERS]
+rflocust-k6 [-h] [--out OUT] [-e KEY=VALUE] [--max-users MAX_USERS]
             [--env-name ENV_NAME] script
 ```
 
@@ -19,9 +20,9 @@ rflocust-k6 [-h] [--out OUT] [-e ENV] [--max-users MAX_USERS]
 |---|---|---|
 | `script` | | The k6 entry script. |
 | `--out` | `robot` | The project folder to write. |
-| `-e KEY=VALUE` | | Passed to `k6 inspect`, as `k6 -e` does. Repeat it for more values. |
+| `-e KEY=VALUE` | | Passed to `k6 inspect`, as `k6 -e` does. Repeat it for more values. This is not `--env-name`. |
 | `--max-users` | 100 | The user ceiling the suite passes to Run Load Test. |
-| `--env-name` | `dev` | The environment file to create. Letters, digits, `_`, `.` and `-` only. |
+| `--env-name` | `dev` | The Robot environment file to create. It is not `-e`. Letters, digits, `_`, `.` and `-` only. |
 
 The k6 binary must be on PATH. `k6 inspect` runs the script's init code as
 you, so convert only scripts you trust. The converter never runs `k6 run`.

@@ -26,19 +26,23 @@ Windows and Linux.
 
 **Open suite...** (Ctrl+O) reads a `.robot` load suite with a Robot dry
 run, so no request is sent. The dry run still imports the suite's Python
-libraries and variable files, so open only suites you trust. The sidebar shows the suite's host and stop rules,
-then each user class with its weight, wait time or pacing. Pick a class to see
+libraries and variable files, so open only suites you trust.
+
+The sidebar shows the suite's host and stop rules, then each user class with its weight, wait time or pacing. Pick a class to see
 its tasks. A host that comes from a variable, such as `${HOST}`, shows its
 value when the variable is in scope.
 
 ## Run it
 
-**Run** (Ctrl+R) starts Robot on the suite at low priority, into a temporary
-output folder. Robot's console output goes to the live log on the right.
+**Run** (Ctrl+R) starts Robot on the suite at low priority. Robot writes its
+output to a new folder in the system temp folder, named `locust-studio-`
+and a random suffix. The live log shows the folder path when the run starts.
+Studio does not delete the folder, so the Report buttons work while it
+exists. Robot's console output goes to the live log on the right.
 Every second the stats table and three charts update: requests and failures
 per second, the 50th and 95th percentile response times, and users.
 
-![The Run tab in the Graphite theme, 18 seconds into a run](screenshots/studio-run-graphite.png)
+![The Run tab in the Graphite (dark) theme, 18 seconds into a run](screenshots/studio-run-graphite.png)
 
 **Stop** ends the Robot process of a suite run. A Build tab run (see
 [Build tab](#build-tab)) cannot be stopped from Studio: Stop stays
@@ -52,7 +56,13 @@ suite needs no change to show in Studio.
 
 When the run ends, the Report tab shows the request count, the failures and
 Locust's statistics table. **Open Robot log** opens `log.html`. **Open
-Locust report** opens the HTML report that Export Report wrote.
+Locust report** opens the HTML report that Export Report wrote. If the
+suite did not call Export Report, this button stays disabled. If the run
+wrote no `log.html`, **Open Robot log** stays disabled.
+
+A Build tab run shows its request count, failures and statistics table on
+the Report tab too. It writes no Robot log and no Locust report, and it
+does not change the two buttons.
 
 ![The Report tab in the Paper theme](screenshots/studio-report.png)
 
@@ -69,7 +79,7 @@ with the users, spawn rate and run time set on the Run tab.
    (defaults 10, 2 and `10s`), then select **Run**.
 
 Studio runs these tasks in its own process through the same keywords a suite
-uses: Create Load Test, Set Wait Time, Add GET Request or Add POST Request,
+uses: Create Load Test, Set Wait Time, Add Get Request or Add Post Request,
 and Run Load Test. So the same host checks apply: the host must be valid, and
 when `LOCUSTLIBRARY_ALLOWED_HOSTS` is set, it must be in that list. Run Load
 Test uses its default `max_users` of 100. A Build tab run has no stop rules
@@ -79,10 +89,9 @@ the full run time; keep the run time short.
 ## Settings
 
 Studio has two themes: Graphite (dark, the default) and Paper (light).
-[DESIGN.md](../DESIGN.md) describes both. Settings also has a right-to-left
-layout switch. Studio ships the Inter and JetBrains Mono fonts under the SIL
-Open Font License 1.1 (`studio/fonts/`); without them it falls back to
-Segoe UI and Consolas.
+Settings also has a right-to-left layout switch. [DESIGN.md](../DESIGN.md)
+describes the themes and the fonts, which ship in
+`src/LocustLibrary/studio/fonts/`.
 
 ## Keys
 

@@ -1,6 +1,6 @@
 # References
 
-All sources, papers, and documentation referenced during the design and research of robotframework-locust. Compiled from research notes in `research_notes/`.
+All sources, papers, and documentation referenced during the design and research of robotframework-locust. Compiled from the research notes in `research_notes/` at the repository root.
 
 ## Locust
 
@@ -20,6 +20,7 @@ All sources, papers, and documentation referenced during the design and research
 
 ## rfswarm
 
+- rfswarm (RF-native load tool): https://github.com/damies13/rfswarm
 - Apply Pacing (source of Set Pacing): https://github.com/damies13/rfswarm/blob/master/Doc/rfswarm_manager.md
 - Useful Variables and TestDataTable: https://github.com/damies13/rfswarm/blob/master/Doc/Preparing_for_perf.md
 
@@ -29,10 +30,9 @@ All sources, papers, and documentation referenced during the design and research
 - RF User Guide (distributing): https://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html#distributing-test-libraries
 - PythonLibCore (HybridCore/DynamicCore): https://github.com/robotframework/PythonLibCore
 - Robot Framework style guide: https://docs.robotframework.org/docs/style_guide
-- rfswarm (RF-native load tool): https://github.com/damies13/rfswarm
 - robotframework-oxygen (Locust handler pattern): https://github.com/eficode/robotframework-oxygen
 - pabot: https://github.com/mkorpela/pabot
-- robotframework-qtexpert (PySide RF library): (GitHub)
+- robotframework-qtexpert (Qt RF library): https://pypi.org/project/robotframework-qtexpert/
 
 ## Python packaging & tooling
 
@@ -40,6 +40,9 @@ All sources, papers, and documentation referenced during the design and research
 - Writing pyproject.toml: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
 - Trusted publishing: https://docs.pypi.org/trusted-publishers/
 - Ruff settings: https://docs.astral.sh/ruff/settings/
+
+## Concurrency (gevent)
+
 - gevent monkey patching: http://www.gevent.org/api/gevent.monkey.html
 - Celery gevent docs: https://docs.celeryq.dev/en/stable/userguide/concurrency/gevent.html
 
