@@ -14,7 +14,7 @@ from .runner import run_load_test
 from .scenario import RunConfig, Scenario, Stats
 from .shared import SharedKeywords
 
-__version__ = "1.0.3"
+__version__ = "2.0.0"
 
 
 def _target_args(host: str, allowed_hosts: str) -> list[str]:

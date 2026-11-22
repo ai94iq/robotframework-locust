@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 (2026-11-22)
 
 - Breaking: a run stopped by the failure breaker (stop_on_fail_ratio) now fails Run Load Test, like a stop rule. Set breaker_fails=False for the old pass.
 - Breaking: rflocust-k6 runs k6 inspect (needed only for computed options) only with --trust-script, because inspect runs the script's init code.
