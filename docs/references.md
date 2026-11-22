@@ -15,7 +15,7 @@ All sources, papers, and documentation referenced during the design and research
 
 ## Taurus
 
-- Pass/fail criteria (source of the Add Stop Rule syntax): https://github.com/Blazemeter/taurus/blob/master/site/dat/docs/PassFail.md
+- Pass/fail criteria (source of the Add Stop Rule syntax): https://gettaurus.org/docs/PassFailCriteria/
 - Monitoring-based criteria (cpu and mem rules): https://github.com/Blazemeter/taurus/blob/master/site/dat/docs/Monitoring.md
 
 ## rfswarm
@@ -34,7 +34,7 @@ All sources, papers, and documentation referenced during the design and research
 - pabot: https://github.com/mkorpela/pabot
 - robotframework-qtexpert (Qt RF library): https://pypi.org/project/robotframework-qtexpert/
 
-## Python packaging & tooling
+## Python packaging and tooling
 
 - Python Packaging User Guide: https://packaging.python.org
 - Writing pyproject.toml: https://packaging.python.org/en/latest/guides/writing-pyproject-toml/
@@ -65,7 +65,7 @@ All sources, papers, and documentation referenced during the design and research
 - QDarkStyleSheet: https://github.com/ColinDuquesnoy/QDarkStyleSheet
 - pyqtdarktheme: https://github.com/5yutan5/pyqtdarktheme
 
-## Security & quality
+## Security and quality
 
 - bandit: https://bandit.readthedocs.io
 - pip-audit: https://pypi.org/project/pip-audit/
