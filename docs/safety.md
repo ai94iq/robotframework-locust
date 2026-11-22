@@ -18,9 +18,10 @@ below). They have no breaker and no stop rules.
 
 - **Peak user ceiling.** Run Load Test always checks the peak user count. It refuses a run before Locust starts when
   its peak user count is above `max_users` (default 100). The peak is the
-  highest stage user count, or `users` when there are no stages, or the sum
-  of the `fixed_count` values of the user classes if that sum is higher. To
-  run more users, pass a higher `max_users` on purpose.
+  highest stage user count, or `users` when there are no stages. These are the
+  users that really run. When the `fixed_count` values of the user classes add
+  up to more, the log shows a warning and the fixed classes take the users
+  first. To run more users, pass a higher `max_users` on purpose.
 - **Host allowlist.** Create Load Test checks the host name against
   `allowed_hosts` (a comma list), or against the
   `LOCUSTLIBRARY_ALLOWED_HOSTS` environment variable when the argument is
@@ -41,6 +42,16 @@ below). They have no breaker and no stop rules.
   host goes into the variables file. The run keyword adds the stop rules
   `fail > 10% for 30s` and `idle > 30s`, and Run Load Test gets
   `stop_on_fail_ratio=20%`. The report shows a `safety | default` row.
+- **Generated suites refuse hand-port stubs.** Parts that `rflocust-k6` could
+  not convert become stubs marked `__hand_port__`. The suite refuses to start
+  while any stub remains. Set `ALLOW_STUBS` to True in the env file to run
+  anyway. The generated env file sets it to False. An older env file gets the
+  line added, and the report shows an `env file | updated` row.
+- **Converter backups.** `rflocust-k6 --force` saves the old tasks file as
+  `<stem>_tasks.py.bak` before it writes a new one. When that name is taken,
+  it uses `.bak.1`, `.bak.2` and so on, so no backup is overwritten. The
+  report shows a `tasks file | backed up` row that names the backup. When
+  the old file already equals the new text, no backup is made.
 
 ## Limits during the run
 
@@ -68,9 +79,9 @@ below). They have no breaker and no stop rules.
     start. Example: `idle > 30s` stops a run that gets no answers for 30 seconds.
 
   The `cpu` and `mem` rules let an overloaded generator stop the run instead
-  of skewing it. A `cpu` or `mem` stop fails Run Load Test by default, even
-  though the cause is the load machine, not the target; add
-  `, stop as passed` if you do not want that.
+  of skewing it. A `cpu` or `mem` stop fails Run Load Test with a message that
+  starts `Inconclusive: the load machine`, because the target was not judged.
+  Add `, stop as passed` to let the run pass.
 
   `fail` and `rc` take each value from the requests completed since the
   previous check (half a second earlier). A check with no new responses
@@ -82,8 +93,8 @@ below). They have no breaker and no stop rules.
   syntax follows the pass/fail criteria of Taurus, an open source load test
   runner ([Taurus pass/fail criteria](https://gettaurus.org/docs/PassFailCriteria/)).
 - **Busy load generator.** When Locust sees this machine's CPU above 90%,
-  Run Load Test logs a warning, and the run can still pass: the Should
-  keywords do not look at this warning. Pass `fail_on_busy_cpu=True` to fail
+  Run Load Test logs a warning, and the run can still pass. After such a run,
+  every Should keyword also logs a warning that the numbers may be skewed. Pass `fail_on_busy_cpu=True` to fail
   the run instead. Response times from such a run can be too
   high, because the generator itself is slow. Lower the user count, or move
   the run to a larger machine, before you trust the response times.
@@ -103,11 +114,16 @@ below). They have no breaker and no stop rules.
 ## Notes on trust and network
 
 - **Code that runs.** Add Python Task imports the module you name and runs
-  its function. The k6 converter runs `k6 inspect`, which runs the script's
-  init code, so `rflocust-k6` refuses to run it without `--trust-script`.
-  Open suite in Studio reads the suite with a Robot dry run, which
-  imports every Python library and variable file the suite names and so runs
-  their module code. Use these only with code and suites you trust.
+  its function. Use it only with code you trust.
+- **k6 options.** `rflocust-k6` reads a literal `export const options` from
+  the script text. It does not run the script, and needs no `--trust-script`.
+  The report shows `options | read statically`. When an option is computed,
+  the converter falls back to `k6 inspect`, which runs the script's init code.
+  Then it needs `--trust-script`, and the error names the option it could not
+  read. The report then shows `options | from k6 inspect`.
+- **Open suite in Studio.** Studio reads the suite file without running it. It
+  imports no Python library or variable file. It takes variables only from
+  `*** Variables ***` sections and resource files.
 - **Web UI on loopback.** Start Locust Web binds 127.0.0.1 only, so other
   machines cannot reach the web UI. Its `host` argument sets the target, not
   the bind address.
@@ -116,14 +132,25 @@ below). They have no breaker and no stop rules.
   machines.
 - **Robot log masking.** The calls that Run Load Test writes to the Robot log
   (`log.html`) are masked. It masks the Authorization,
-  Proxy-Authorization, Cookie and Set-Cookie headers. It also masks the body
-  fields password, client_secret, access_token, refresh_token, id_token and
-  otp. URLs, query strings, other headers and other body fields are logged as
-  sent. Do not put secrets in URLs.
+  Proxy-Authorization, Cookie, Set-Cookie, X-Api-Key, Api-Key, X-Auth-Token
+  and X-Access-Token headers. It also masks the body fields password,
+  client_secret, access_token, refresh_token, id_token and otp. To mask more
+  names, pass the library import argument `mask` as a comma list of header or
+  body field names; it applies to that library instance. Query values whose
+  names are masked are masked too; each `name=value` pair between `&`
+  signs is checked on its own. The summary line of each call (request name
+  and failure text) is masked too. Other headers, fields and query values are
+  logged as sent. Do not put secrets in URL paths.
 - **TLS checks.** `verify_tls=False` on Create Load Test skips certificate
   checks, as k6 insecureSkipTLSVerify does. Use it only for test hosts with a
-  self-signed certificate.
-- **Proxy.** Locust ignores the HTTPS_PROXY environment variable, so set the
-  proxy here instead. Pass it to Create Load Test as an `http://` URL. The library does not check
+  self-signed certificate. You can also pass the path of a CA bundle file to
+  `verify_tls` instead; a path to a missing file is refused.
+- **Proxy.** Pass a proxy to Create Load Test as an `http://` URL. With an
+  empty `proxy`, the library reads HTTPS_PROXY, then HTTP_PROXY, from the
+  environment. Pass `proxy=none` to use no proxy at all. `no_proxy` takes a
+  comma list of hosts that skip the proxy. An entry such as `example.com` or
+  `.example.com` also covers its subdomains, such as `api.example.com`;
+  `host:port` covers only that port. When the proxy comes from the
+  environment, the hosts in NO_PROXY are added to that list. The library does not check
   the value, so a wrong one fails only when the requests are sent. The
   library sends both http and https traffic through it.

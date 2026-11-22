@@ -24,14 +24,19 @@ Windows and Linux. It is not tested on macOS.
 
 ## Open a suite
 
-**Open suite...** (Ctrl+O) reads a `.robot` load suite with a Robot dry
-run, so no request is sent. The dry run still imports the suite's Python
-libraries and variable files, so open only suites you trust.
+**Open suite...** (Ctrl+O) reads a `.robot` load suite and its resource
+files without running them. No request is sent, and no Python library or
+variable file is imported.
 
 The sidebar shows the suite's host and stop rules, then each user class
 with its weight, wait time or pacing. Pick a class to see its tasks. A host
 that comes from a variable, such as `${HOST}`, shows its value when the
-variable is in scope. When it is not in scope, the sidebar shows the
+variable is set in a `*** Variables ***` section of the suite or one of its
+resource files. Values from variable files or the command line are not read.
+A variable that a user keyword gets through `[Arguments]` shows the value
+passed to it. When you open a folder, each child suite is read with its own
+variables and keywords.
+When the variable is not found, the sidebar shows the
 variable as written, such as `${HOST}`.
 
 ## Run it

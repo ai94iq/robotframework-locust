@@ -69,7 +69,7 @@ and a stop rule limit takes `ms`, `s` or `%`.
 
 | Keyword | Arguments | What it does |
 |---|---|---|
-| Create Load Test | host, verify_tls=True, proxy=, allowed_hosts= | Starts a new scenario and drops the one before it. See [Create Load Test details](#create-load-test-details). |
+| Create Load Test | host, verify_tls=True, proxy=, allowed_hosts=, no_proxy= | Starts a new scenario and drops the one before it. See [Create Load Test details](#create-load-test-details). |
 | Add User Class | name, weight=1, fixed_count=0 | Starts a user class. Later tasks and waits belong to it. |
 | Set Wait Time | minimum, maximum | Think time between tasks of the current user class, a random time from minimum to maximum. Optional: with no call, a class waits 1 to 3 seconds. A later call replaces the earlier one. |
 | Set Pacing | interval | Starts a task run every interval per user, whatever the response time (Locust constant_pacing). A run that takes longer starts the next at once. For the class, pacing wins over Set Wait Time, whichever is called first. A later call replaces the interval. |
@@ -130,11 +130,19 @@ Should keywords do not read their stats. Stop them with Stop Locust Web and Stop
   are dropped; the match ignores case and the port, and subdomains do not
   match. With an empty value, the `LOCUSTLIBRARY_ALLOWED_HOSTS` variable
   is used. See [Limits before the run](safety.md#limits-before-the-run).
-- `verify_tls=False` skips the TLS certificate check.
+- `verify_tls=False` skips the TLS certificate check. `verify_tls` also
+  takes the path of a CA bundle file, used to check the certificate. A path
+  to a file that does not exist is refused.
 - `proxy` is an `http://` proxy URL. Every http and https request of the
-  run goes through it; there is no bypass list. Locust ignores the
-  `HTTPS_PROXY` environment variable, so set the proxy here. With an empty
-  value, no proxy is used.
+  run goes through it, except hosts in `no_proxy`. With an empty value, the
+  library reads `HTTPS_PROXY` or `HTTP_PROXY` (either case) from the
+  environment. `proxy=none` turns the proxy off, also the one from the
+  environment.
+- `no_proxy` is a comma list of host names that skip the proxy. A name
+  also covers its subdomains, with or without a leading dot, so
+  `example.com` and `.example.com` both cover `api.example.com`. A
+  `host:port` entry covers only that port. When the
+  proxy comes from the environment, the names in `NO_PROXY` are added.
 - A second Create Load Test starts again from nothing: user classes, tasks,
   stages, stop rules and the stats of the last run are dropped.
 
@@ -143,13 +151,18 @@ Should keywords do not read their stats. Stop them with Stop Locust Web and Stop
 - `spawn_rate` is users started per second. `iterations` caps the task
   runs for all users together; `0` means no cap.
 - The run is refused before it starts if the peak user count is above
-  `max_users`. See [Several user classes](#several-user-classes) and
+  `max_users`. The peak is the users that really run: the highest stage
+  user count, or `users` with no stages. See [Several user classes](#several-user-classes) and
   [Limits before the run](safety.md#limits-before-the-run).
 - `stop_on_fail_ratio` sets the failure breaker: when the failure ratio goes
   over it, after `fail_ratio_warmup`, the run stops early. A breaker stop
   fails the keyword; `breaker_fails=False` lets it pass.
+- When a `cpu` or `mem` stop rule ends the run, the keyword fails with
+  `Inconclusive: the load machine ran out of room, ...`. The target was not
+  judged. With `, stop as passed`, the run still passes.
 - A load generator CPU over 90% logs a warning; `fail_on_busy_cpu=True`
-  fails the keyword instead.
+  fails the keyword instead. After such a run, every Should keyword also
+  logs a warning that the numbers may be skewed.
 - With `verify_tls` off, it logs one warning per host.
 - The log gets a stats table and sample calls; see [Reports](#reports).
 - Run Load Test can be called again. It runs the current scenario once more,
@@ -189,18 +202,15 @@ example, Checker gets 2 users and Browser gets the other 18.
 With Set Load Stages, the same split applies to the user count of each
 stage: with a `1m:10` stage, Checker gets 2 and Browser gets 8.
 
-The sum of the `fixed_count` values counts toward the peak that `max_users`
-checks; see [Limits before the run](safety.md#limits-before-the-run) for the
-full rule. Run Load Test does not refuse or clamp a `fixed_count` sum above `users`.
-For example, with `users=2` and a class with `fixed_count=5`, the peak is 5:
-`max_users=4` refuses the run, and `max_users=100` lets it start. Only 2
-users run, fixed users first, but the `max_users` check uses the peak of 5.
-So the check can refuse a load that would never run.
+The `max_users` check counts only the users that really run: `users`, or
+the highest stage user count with stages. The `fixed_count` values do not
+add to it. See [Limits before the run](safety.md#limits-before-the-run).
+Run Load Test does not refuse or clamp a `fixed_count` sum above that count;
+it logs a warning. For example, with `users=2` and a class with
+`fixed_count=5`, only 2 users run, fixed users first, and the check uses 2.
 
 With stages, each stage caps the users. With a `1m:3` stage and a class
-with `fixed_count=5`, at most 3 users run in that stage. The peak for
-`max_users` is still 5, the higher of the top stage count and the
-`fixed_count` sum.
+with `fixed_count=5`, at most 3 users run in that stage.
 
 ## Python tasks
 
@@ -272,10 +282,19 @@ Run Load Test writes to the Robot log:
 - a stats table per request name,
 - the first 3 calls of each name and up to 50 failed calls, in RequestsLibrary
   style. The values of the `Authorization`, `Proxy-Authorization`,
-  `Cookie` and `Set-Cookie` headers show as `***`. The `password`,
+  `Cookie`, `Set-Cookie`, `X-Api-Key`, `Api-Key`, `X-Auth-Token` and
+  `X-Access-Token` headers show as `***`. The `password`,
   `client_secret`, `access_token`, `refresh_token`, `id_token` and
-  `otp` fields of JSON or form bodies also show as `***`. URLs, query
-  strings and other headers, such as `X-Api-Key`, are logged as sent.
+  `otp` fields of JSON or form bodies also show as `***`. Query values
+  with any of these names show as `***` too. Each `name=value` pair
+  between `&` signs is checked on its own; a bare name with no `=`
+  stays as written. The summary line of each call, with the request name
+  and the failure text, is masked the same way. Other headers and the rest
+  of the URL are logged as sent.
+  To mask more names, give the library import argument `mask` a comma
+  list of header or body field names, such as
+  `Library    LocustLibrary    mask=X-Session, pin`. It applies to that
+  library instance.
   JSON bodies are written out again as JSON, so spacing and key layout can
   differ from what was sent. A body over 10000 characters is cut and marked. The log and the HTML report are often shared, so
   do not put secrets in URLs.

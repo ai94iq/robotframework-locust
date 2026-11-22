@@ -15,14 +15,19 @@ page covers how the conversion works, what it maps, and what you port by hand.
 
 ## How it works
 
-1. The options reader runs `k6 inspect --execution-requirements` on the script
-   and reads its resolved options: scenarios, thresholds, the TLS flag and the
-   total duration. The call has a 60 s timeout (`run_inspect` in
-   `src/LocustLibrary/k6/options.py`). k6 runs the script's init (top-level) code
-   as you, so convert only scripts you trust (see [safety.md](safety.md)). The
-   command runs `k6 inspect` only when you pass `--trust-script`. Without it, the
-   command exits 1 with a one-line reason and writes no files. The
-   converter never calls `k6 run`. k6 gets only these environment variables:
+1. The options reader first reads `export const options` straight from the
+   script, when every value in it is a literal (`static_options` in
+   `src/LocustLibrary/k6/scan.py`). This runs no k6 and needs no
+   `--trust-script`. The report row is `options | read statically`.
+   When an option is computed, the reader falls back to
+   `k6 inspect --execution-requirements`, which gives the resolved options:
+   scenarios, thresholds, the TLS flag and the total duration. The call has a
+   60 s timeout (`run_inspect` in `src/LocustLibrary/k6/options.py`). k6 runs
+   the script's init (top-level) code as you, so convert only scripts you trust
+   (see [safety.md](safety.md)). The fallback runs only when you pass
+   `--trust-script`. Without it, the command exits 1 with a one-line reason
+   that names the option that is not a literal, and writes no files. The report
+   row is then `options | from k6 inspect`. The converter never calls `k6 run`. k6 gets only these environment variables:
    `PATH`, `SYSTEMROOT`, `HOME`, `USERPROFILE`, `TEMP`, `TMP` and `TMPDIR`, when
    set. `__ENV` in init code sees those and the `-e` pairs, nothing else.
 2. The scanner (`src/LocustLibrary/k6/scan.py`) parses the script with
@@ -34,10 +39,13 @@ page covers how the conversion works, what it maps, and what you port by hand.
    `profile.py` maps scenarios and thresholds to keyword lines, and
    `robot_files.py` writes the suite, resources and Python tasks.
 
-Options: `--trust-script` (required), `--out`, `--max-users`, `--env-name`,
+A script path that does not exist stops the command with
+`rflocust-k6: no such file: <path>`.
+
+Options: `--trust-script` (needed only for computed options), `--out`, `--max-users`, `--env-name`,
 `-e KEY=VALUE`, `--host` and `--force` (see below).
 
-The k6 binary must be on PATH. If it is not, the command stops with a Python
+The k6 binary must be on PATH when the fallback runs. If it is not, the command stops with a Python
 traceback, not a one-line error (see [Limits](#limits)). The traceback ends in
 `FileNotFoundError: k6 is not on PATH; k6 inspect is needed to read options`.
 If `k6 inspect` exits non-zero or runs past 60 s, the command also stops with a
@@ -57,8 +65,8 @@ files are written. Paths are relative to the project folder:
 | `collections/<stem>_test_keywords.resource` | Build, Run and Check keywords. Threshold endpoints sit in `@{<STEM>_CHECK_<n>_ENDPOINTS}` lists, looped with FOR |
 | `resources/resources.resource` | Entry file every suite imports. Rebuilt on each run: LocustLibrary with `python_path` set to `resources/python`, then every collection |
 | `resources/variables.resource` | `${ENV}`, default `dev`. Written only when missing |
-| `resources/<env>_variables.resource` | `${HOST}`, `${ALLOWED_HOSTS}` and `${PROXY}` for one environment (`--env-name`, default dev; letters, digits, `_`, `.` and `-` only). `${ALLOWED_HOSTS}` starts as the host name of `${HOST}`; the two are not linked, so when you change `${HOST}`, change `${ALLOWED_HOSTS}` too. `${PROXY}` is `${EMPTY}`, which means no proxy. Written only when missing; on a rerun, `--host` rewrites only its `${HOST}` and `${ALLOWED_HOSTS}` lines |
-| `resources/python/<stem>_tasks.py` | One function per exec function. Add Python Task finds it through `python_path`. Kept when it exists, unless you pass `--force` |
+| `resources/<env>_variables.resource` | `${HOST}`, `${ALLOWED_HOSTS}`, `${PROXY}` and `${ALLOW_STUBS}` for one environment (`--env-name`, default dev; letters, digits, `_`, `.` and `-` only). `${ALLOWED_HOSTS}` starts as the host name of `${HOST}`; the two are not linked, so when you change `${HOST}`, change `${ALLOWED_HOSTS}` too. `${PROXY}` is `${EMPTY}`, which reads `HTTPS_PROXY` or `HTTP_PROXY` from the environment; set it to `none` for no proxy. `${ALLOW_STUBS}` is `${False}` (see [Plain and hand port functions](#plain-and-hand-port-functions)). Written only when missing; a kept file without `${ALLOW_STUBS}` gets the line appended, with the row `env file | updated`; on a rerun, `--host` rewrites only its `${HOST}` and `${ALLOWED_HOSTS}` lines |
+| `resources/python/<stem>_tasks.py` | One function per exec function. Add Python Task finds it through `python_path`. Kept when it exists, unless you pass `--force`, which first copies it to `<stem>_tasks.py.bak` (or `.bak.1`, `.bak.2` and so on when taken) |
 | `reports/<stem>.k6-report.md` | One row per item: status and note |
 
 `<Title>` is the stem in title case, with `_` read as a space, such as `Combined` for `combined.js`.
@@ -73,7 +81,11 @@ The tasks module is kept when it exists, so your hand ports survive. The report
 then gets a row `tasks file | kept`. When the kept file lacks a function the
 suite calls, the report also gets a row `tasks file | missing` that names each
 one. The kept file must define one function per exec function. Pass `--force`
-to rewrite the tasks module.
+to rewrite the tasks module. The old file is copied to `<stem>_tasks.py.bak`
+first, and the report gets a row `tasks file | backed up` that names the
+backup. When that name is taken, the copy goes to `.bak.1`, then `.bak.2`
+and so on; no backup is overwritten. When the old file already equals the new
+text, nothing is copied.
 The two variables files are also kept.
 
 ## Mapping table
@@ -82,6 +94,15 @@ k6 terms used below: a scenario is one named workload, and its `exec` function
 is the code each virtual user (VU) runs. An executor sets how a scenario
 schedules VUs. A threshold is a pass rule on a metric. Init code is the
 script's top-level code. See the k6 docs at https://grafana.com/docs/k6/latest/.
+
+Top-level `vus`, `iterations`, `duration` and `stages` become one scenario
+named `default`, as k6 does it. `vus` alone becomes `shared-iterations` with
+`vus` users and the same number of iterations. `stages` becomes `ramping-vus`,
+with `vus` as the start count. `iterations` with `duration` becomes
+`shared-iterations` with `duration` as its `maxDuration`. These shortcuts
+replace any `scenarios`. The converter refuses `iterations` or `duration`
+together with `stages` or `scenarios`, and `stages` together with
+`scenarios`, as k6 does.
 
 | k6 | LocustLibrary | Report status |
 |---|---|---|
@@ -181,7 +202,14 @@ def tokenScenario(user: Any) -> None:
     raise StopUser
 ```
 
-The stub records one failed `HAND PORT` request named after the function, then
+The converter marks each stub with `tokenScenario.__hand_port__ = True`. The
+Run keyword calls `check_hand_ports` (`src/LocustLibrary/k6/stubs.py`) before
+the load starts. While a marked stub remains, the test fails with
+`hand-port stubs not ported: tokenScenario; set ALLOW_STUBS to True to run anyway`.
+Port the stub and remove its marker line. To run with stubs anyway, set
+`${ALLOW_STUBS}` to `${True}` in the environment file.
+
+With `${ALLOW_STUBS}` True, the stub records one failed `HAND PORT` request named after the function, then
 stops that user. So `Should` checks and the fail ratio count the missing port as
 a failure. That user sends no more load for the rest of the run, so the
 scenario's load is gone. The run still ends on run_time. Port every stub
@@ -216,7 +244,8 @@ that name, so a different name leaves the check with no row to read.
   user count is cut to `--max-users`. Both keep the peak at or below the
   ceiling, and both write a `clamped` row to the report.
 - Run Load Test gets `max_users=<value>` from `--max-users` and refuses a run
-  whose peak exceeds it. To change the ceiling, rerun the converter with a new
+  whose users exceed it. It counts the users that really run: the highest stage
+  target, else `users`. A sum of `fixed_count` values above that only warns. To change the ceiling, rerun the converter with a new
   `--max-users`, or edit the `max_users=` argument in the Run keyword of
   `collections/<stem>_test_keywords.resource`. A hand edit is lost on the next
   conversion, so pass `--max-users` on each rerun.
@@ -256,11 +285,12 @@ that name, so a different name leaves the check with no row to read.
   `${ALLOWED_HOSTS}` lines of that file and leaves the rest. When the file has
   neither line, the report says `host | not applied`; set them by hand. When no origin is found,
   `${HOST}` is `http://127.0.0.1` and the report says to set it by hand.
-- Generated hand port stubs record a failed `HAND PORT` request until ported.
+- The suite refuses to start while a hand port stub remains, unless
+  `${ALLOW_STUBS}` is True. Then each stub records a failed `HAND PORT` request.
 - Executors other than `ramping-vus`, `constant-vus` and `shared-iterations`
   run as looping users, so the count is approximate.
-- A missing k6, a failed `k6 inspect` or a 60 s timeout ends the command with a
-  Python traceback, not a one-line error.
+- When the fallback runs, a missing k6, a failed `k6 inspect` or a 60 s timeout
+  ends the command with a Python traceback, not a one-line error.
 
 ## Example run
 
@@ -270,8 +300,8 @@ shared-iterations), endpoint tags, four
 thresholds (one strict `<`, one unsupported `avg`), a helper called with no
 arguments and a helper called with an argument. Every URL is on
 `http://127.0.0.1:8765`. One call checks `r.status === 201`.
-`rflocust-k6 samples/k6/combined.js --trust-script --force --out <folder>`
-wrote this report:
+Its options are literal, so `rflocust-k6 samples/k6/combined.js --force --out <folder>`
+needs no `--trust-script`. It wrote this report into a new folder:
 
 | Item | Status | Note |
 |---|---|---|
@@ -286,6 +316,7 @@ wrote this report:
 | scenario token | hand port | line 57: tokenFlow('sample') is not an HTTP call, check or sleep |
 | host | detected | http://127.0.0.1:8765: most common origin, 2 of 2 calls |
 | safety | default | allowed_hosts=127.0.0.1; stop rules: fail > 10% for 30s; idle > 30s; stop_on_fail_ratio=20% |
+| options | read statically |
 
 The suite is thin. Its one test calls the collection keyword:
 
@@ -301,6 +332,8 @@ The collection holds the Build, Run and Check keywords. Its Run keyword:
 ```
 Run Combined Load
     [Documentation]    Runs the converted k6 load profile headless.
+    ${allow}=    Get Variable Value    ${ALLOW_STUBS}    ${False}
+    Evaluate    __import__('LocustLibrary.k6.stubs', fromlist=['_']).check_hand_ports('combined_tasks', $allow)
     Add Stop Rule    fail > 10% for 30s
     Add Stop Rule    idle > 30s
     Run Load Test    users=17    spawn_rate=17    run_time=90s    max_users=100    stop_on_fail_ratio=20%
@@ -308,5 +341,6 @@ Run Combined Load
 ```
 
 Port the `tokenScenario` stub in `resources/python/combined_tasks.py`, and add
-the `warmUp` helper's calls to the function of the exec function that calls it. Then, from the output folder, run
+the `warmUp` helper's calls to the function of the exec function that calls it. Remove the
+`tokenScenario.__hand_port__ = True` line. Then, from the output folder, run
 `robot -v ENV:dev tests`.
