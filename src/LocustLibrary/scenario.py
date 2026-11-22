@@ -66,7 +66,6 @@ class RunConfig:
     fail_ratio_warmup: float = 10.0
     breaker_fails: bool = True
     stop_rules: list[StopRule] = field(default_factory=list)
-    stop_event: Any = field(default=None, repr=False, compare=False)
     mask: frozenset[str] = frozenset()
 
 

@@ -1,6 +1,7 @@
 """Main studio application window."""
 
 import sys
+from pathlib import Path
 from typing import Any
 
 try:
@@ -10,10 +11,12 @@ try:
         QApplication,
         QCheckBox,
         QComboBox,
+        QFileDialog,
         QFormLayout,
         QHBoxLayout,
         QLabel,
         QMainWindow,
+        QMessageBox,
         QSplitter,
         QStackedWidget,
         QTabBar,
@@ -25,6 +28,7 @@ except ImportError as exc:  # pragma: no cover
     raise SystemExit("PySide6 required for studio") from exc
 
 from .build_tab import BuildTab
+from .built_suite import write_suite
 from .fonts import load_fonts
 from .panels import set_table_colors
 from .report_tab import ReportTab
@@ -72,12 +76,26 @@ class MainWindow(QMainWindow):  # type: ignore[misc, unused-ignore]
 
     def _connect(self) -> None:
         self.sidebar.suite_opened.connect(self.run_tab.set_suite)
+        self.build_tab.save_requested.connect(self.save_built_suite)
         self.run_tab.console.connect(self._append_log)
         self.run_tab.final.connect(self.report_tab.show_final)
         self.run_tab.outputs.connect(self.report_tab.set_outputs)
         for keys, action in (("Ctrl+R", self.run_tab.run), ("Ctrl+O", self.sidebar.choose_suite),
                              ("Ctrl+,", lambda: self.tabs.setCurrentIndex(3))):
             QShortcut(QKeySequence(keys), self).activated.connect(action)
+
+    def save_built_suite(self) -> None:
+        """Write the Build tab's tasks and the Run tab's load values to a suite the user picks."""
+        path, _ = QFileDialog.getSaveFileName(self, "Save suite", "built_load_test.robot",
+                                              "Robot suites (*.robot)")
+        if not path:
+            return
+        try:
+            write_suite(self.build_tab.scenario(), self.run_tab.run_values(), Path(path))
+        except ValueError as exc:
+            QMessageBox.warning(self, "Cannot build the suite", str(exc))
+            return
+        self._append_log(f"Saved {path}\n")
 
     def apply_theme(self, name: str) -> None:
         self._theme_name = name

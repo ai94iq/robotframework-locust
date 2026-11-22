@@ -1,7 +1,8 @@
-"""Build tab: HTTP tasks put together by hand, run when no suite is open."""
+"""Build tab: HTTP tasks put together by hand, run as a built suite when no suite is open."""
 
 from typing import Any
 
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -17,6 +18,8 @@ from PySide6.QtWidgets import (
 
 
 class BuildTab(QWidget):  # type: ignore[misc, unused-ignore]
+    save_requested = Signal()
+
     def __init__(self) -> None:
         super().__init__()
         self.tasks: list[dict[str, Any]] = []
@@ -38,6 +41,11 @@ class BuildTab(QWidget):  # type: ignore[misc, unused-ignore]
         lay.addWidget(self.empty_tasks_label)
         lay.addWidget(self.task_list)
         lay.addLayout(self._task_row())
+        save_btn = QPushButton("Save as suite")
+        save_btn.setObjectName("ghost")
+        save_btn.setAccessibleName("Save the tasks as a Robot suite")
+        save_btn.clicked.connect(self.save_requested.emit)
+        lay.addWidget(save_btn)
 
     def _task_row(self) -> QHBoxLayout:
         row = QHBoxLayout()

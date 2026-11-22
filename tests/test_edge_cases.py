@@ -1,8 +1,6 @@
 """Round 4 review fixes: stop rule units, k6 check scanning, kept tasks, distributed start."""
 
-import os
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -157,28 +155,3 @@ def test_shared_queue_is_built_once_per_name(monkeypatch) -> None:
     assert lib.take_shared_value("id") == 1
     assert built == [1]
 
-
-def test_studio_worker_says_when_stop_cannot_reach_the_run(monkeypatch) -> None:
-    pytest.importorskip("PySide6", reason="PySide6 not installed: Studio worker Stop wiring is untested")
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    import LocustLibrary as package
-    from LocustLibrary.studio import worker
-
-    ran: list[Any] = []
-
-    class _NoConfig:
-        _config = None
-
-        def create_load_test(self, _host: str) -> None: ...
-        def set_wait_time(self, *_: Any) -> None: ...
-        def run_load_test(self, **kw: Any) -> None:
-            ran.append(kw)
-
-    monkeypatch.setattr(package, "LocustLibrary", _NoConfig)
-    errors: list[str] = []
-    job = worker.RunWorker({"host": "http://h", "wait_min": 0, "wait_max": 0, "tasks": [],
-                            "users": 1, "spawn_rate": 1, "run_time": "1s"}, "feed.jsonl")
-    job.error.connect(errors.append)
-    job.run()
-    assert ran == []
-    assert errors and "Stop" in errors[0]

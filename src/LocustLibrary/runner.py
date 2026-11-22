@@ -49,14 +49,6 @@ def fail_breaker(local: Any, limit: float, warmup: float) -> Callable[[float], s
     return check
 
 
-STOP_REASON = "stopped from Studio"
-
-
-def stop_check(event: Any) -> Callable[[float], str]:
-    """A wait check that ends the run, not as a failure, once `event` is set."""
-    return lambda elapsed: STOP_REASON if event is not None and event.is_set() else ""
-
-
 def _wait_until(seconds: float, budget: Budget,
                 breaker: Callable[[float], str] | None = None) -> str:
     start = time.monotonic()
@@ -96,8 +88,7 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
             tripped.append(reason)
             return reason
 
-        stopped = _wait_until(seconds, budget, _first_reason(breaker_check, watch.check,
-                                                           stop_check(config.stop_event)))
+        stopped = _wait_until(seconds, budget, _first_reason(breaker_check, watch.check))
         runner.quit()
         runner.greenlet.join(timeout=10)
     history.kill(block=False)

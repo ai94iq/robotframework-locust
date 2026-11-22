@@ -56,10 +56,6 @@ per second, the 50th and 95th percentile response times, and users.
 "Stopped." and the status shows "Run ended, Robot exit code N", with the
 exit code Robot returned.
 
-**Stop** also ends a Build tab run (see [Build tab](#build-tab)). The live
-log shows "Stopping...", the status shows "Run stopped", and the run does
-not count as a failure.
-
 Run Load Test writes the live feed only when the `LOCUSTLIBRARY_FEED`
 environment variable names a file. Studio sets it for its own runs, so a
 suite needs no change to show in Studio.
@@ -72,18 +68,15 @@ Locust report** opens the HTML report that Export Report wrote. If the
 suite did not call Export Report, this button stays disabled. If the run
 wrote no `log.html`, **Open Robot log** stays disabled.
 
-A Build tab run shows its request count, failures and statistics table on
-the Report tab too. It writes no Robot log and no Locust report, and it
-does not change the two buttons.
-
 ![The Report tab in the Paper theme](screenshots/studio-report.png)
 
 ## Build tab
 
 ![The Build tab](screenshots/studio-build.png)
 
-With no suite open, Run runs the HTTP tasks put together on the Build tab,
-with the users, spawn rate and run time set on the Run tab. Studio has no
+With no suite open, Run turns the HTTP tasks put together on the Build tab
+into a Robot suite and runs that suite like an opened one, with the users,
+spawn rate and run time set on the Run tab. Studio has no
 action that closes a suite. So the Build tab runs only before the first
 suite is opened. To use it after that, start Studio again.
 
@@ -96,15 +89,23 @@ suite is opened. To use it after that, start Studio again.
 3. On the Run tab, set **Users**, **Spawn rate** and **Run time**
    (defaults 10, 2 and `10s`), then select **Run**.
 
-Studio runs these tasks in its own Python process, without Robot, through the same keywords a suite
-uses: Create Load Test, Set Wait Time, Add Get Request or Add Post Request,
-and Run Load Test. So the same host checks apply: the host must be valid, and
-when `LOCUSTLIBRARY_ALLOWED_HOSTS` is set, it must be in that list. Run Load
-Test uses its default `max_users` of 100. A Build tab run has no stop rules
-and no Should checks. To end it early, select **Stop**. The run then ends
-as stopped from Studio, not as a failure. A Build tab run writes its live
-feed to a new `locust-studio-*` folder in the system temp folder. Studio
-does not delete this folder either.
+The suite calls Create Load Test, Set Wait Time, Add Get Request or Add
+Post Request for each task, two stop rules (`fail > 10% for 30s` and
+`idle > 30s`), Run Load Test with `stop_on_fail_ratio=20%`, and Export
+Report. So a Build tab run gets the same host checks, stop rules, Stop
+button, Robot log and Locust report as an opened suite. Run Load Test uses
+its default `max_users` of 100. Studio writes the suite to a new
+`locust-studio-suite-*` folder in the system temp folder and does not
+delete it.
+
+A name, path, host, wait time or run time must be one Robot value: no
+empty value, no spaces at either end, no double spaces, tabs or line
+breaks. Studio shows a warning and does not run otherwise.
+
+**Save as suite** writes the same suite to a `.robot` file you pick, with
+the Run tab's users, spawn rate and run time. Open that file in any editor
+to add headers, bodies, user classes, pacing or Should checks, then open it
+in Studio with **Open suite**.
 
 ## Settings
 

@@ -95,8 +95,8 @@ Robot and updates the stats table and Studio's three charts every second.
 When the run ends, the Report tab shows the final stats. Open Robot log is
 enabled when the run wrote `log.html`. Open Locust report is enabled when the
 suite called Export Report.
-Stop ends a run. A run started from the Build tab then shows "Run stopped". A
-suite run shows "Run ended, Robot exit code N", as for any non-zero exit.
+Stop ends a run, which then shows "Run ended, Robot exit code N", as for any
+non-zero exit. With no suite open, the Build tab's tasks run as a built suite.
 Studio has a dark and a light theme and runs on Windows and Linux. See
 [docs/studio.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/studio.md).
 
@@ -183,7 +183,7 @@ not own.
 | [docs/k6-converter.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/k6-converter.md) | The k6 mapping, its limits, porting by hand |
 | [docs/cli.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/cli.md) | The commands and their options |
 | [docs/keywords.html](https://ai94iq.github.io/robotframework-locust/keywords.html) | Keyword reference, built by libdoc |
-| [docs/references.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/references.md) | Sources: Locust, Robot Framework, Taurus, rfswarm, packaging, gevent, PySide, security, arXiv papers and other research |
+| [docs/references.md](https://github.com/ai94iq/robotframework-locust/blob/main/docs/references.md) | Sources a user acts on: Locust, Robot Framework, Taurus pass/fail syntax and rfswarm pacing. Other research sources are in CONTRIBUTING.md. |
 | [CHANGELOG.md](https://github.com/ai94iq/robotframework-locust/blob/main/CHANGELOG.md) | Changes per release |
 
 ## For coding agents

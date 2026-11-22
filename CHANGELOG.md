@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Changed: a Studio Build tab run is now a Robot suite run. Studio writes the tasks to a suite with two stop rules, the failure breaker and Export Report, so the run gets the same checks, Stop, Robot log and Locust report as an opened suite. New Save as suite button.
+- Removed: the in-process Build tab runner and RunConfig.stop_event, which only that runner used.
+- Docs: k6 converter internals and research sources moved from the user guides to CONTRIBUTING.md; docs/library.md lists keywords and links keywords.html for their arguments; docs/references.md keeps the sources a user acts on.
+
 ## 2.0.0 (2026-11-22)
 
 - Breaking: a run stopped by the failure breaker (stop_on_fail_ratio) now fails Run Load Test, like a stop rule. Set breaker_fails=False for the old pass.

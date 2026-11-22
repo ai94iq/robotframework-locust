@@ -12,9 +12,8 @@ from typing import Any
 
 from gevent import monkey
 
-from LocustLibrary import feed, runner
+from LocustLibrary import feed
 
-STOP_REASON = runner.STOP_REASON
 _ROBOT_PAGES = {"log.html", "report.html"}
 
 

@@ -1,4 +1,4 @@
-"""Run tab: run the open suite under Robot, or the Build tab's tasks in process, with live charts."""
+"""Run tab: run the open suite, or a suite built from the Build tab's tasks, under Robot with live charts."""
 
 import tempfile
 import time
@@ -19,11 +19,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from LocustLibrary import feed
-
+from .built_suite import write_suite
 from .live import Series, SuiteRun, Update, start_suite
 from .panels import Charts, fill_stats, stats_table
-from .worker import RunWorker
 
 
 class RunTab(QWidget):  # type: ignore[misc, unused-ignore]
@@ -36,9 +34,6 @@ class RunTab(QWidget):  # type: ignore[misc, unused-ignore]
         self._scenario = scenario
         self._suite = ""
         self._suite_run: SuiteRun | None = None
-        self._worker: RunWorker | None = None
-        self._feed_path = ""
-        self._feed_at = 0
         self.series = Series()
         self._timer = QTimer(self)
         self._timer.setInterval(500)
@@ -94,9 +89,8 @@ class RunTab(QWidget):  # type: ignore[misc, unused-ignore]
         self.run_btn.setText(f"Run {Path(path).name}")
 
     def run(self) -> None:
-        scenario = self._scenario()
-        if not self._suite and not scenario["tasks"]:
-            QMessageBox.warning(self, "Nothing to run", "Open a suite or add a task on the Build tab.")
+        suite = self._suite or self._built_suite()
+        if not suite:
             return
         self.series = Series()
         self.charts.draw(self.series)
@@ -104,39 +98,37 @@ class RunTab(QWidget):  # type: ignore[misc, unused-ignore]
         self.run_btn.setEnabled(False)
         self._started = time.monotonic()
         self._set_status("Running 0 s", running=True)
-        if self._suite:
-            self._suite_run = start_suite(self._suite)
-            self.console.emit(f"Output: {self._suite_run.outdir}\n")
-            self.stop_btn.setEnabled(True)
-        else:
-            self._start_built_tasks(scenario)
-            self.stop_btn.setEnabled(True)
+        self._suite_run = start_suite(suite)
+        self.console.emit(f"Output: {self._suite_run.outdir}\n")
+        self.stop_btn.setEnabled(True)
         self._timer.start()
 
-    def _start_built_tasks(self, scenario: dict[str, Any]) -> None:
-        kwargs = {**scenario, "users": self.users_spin.value(), "spawn_rate": self.spawn_spin.value(),
-                  "run_time": self.runtime_edit.text()}
-        self._feed_path = str(Path(tempfile.mkdtemp(prefix="locust-studio-")) / "feed.jsonl")
-        self._feed_at = 0
-        self._worker = RunWorker(kwargs, self._feed_path)
-        self._worker.finished.connect(self._on_finished)
-        self._worker.error.connect(self._on_error)
-        self._worker.start()
+    def run_values(self) -> dict[str, Any]:
+        """Users, spawn rate and run time for a suite built from the Build tab."""
+        return {"users": self.users_spin.value(), "spawn_rate": self.spawn_spin.value(),
+                "run_time": self.runtime_edit.text()}
+
+    def _built_suite(self) -> str:
+        scenario = self._scenario()
+        if not scenario["tasks"]:
+            QMessageBox.warning(self, "Nothing to run", "Open a suite or add a task on the Build tab.")
+            return ""
+        folder = Path(tempfile.mkdtemp(prefix="locust-studio-suite-"))
+        try:
+            return str(write_suite(scenario, self.run_values(), folder / "built_load_test.robot"))
+        except ValueError as exc:
+            QMessageBox.warning(self, "Cannot build the suite", str(exc))
+            return ""
 
     def _stop(self) -> None:
         if self._suite_run:
             self._suite_run.process.terminate()
             self.console.emit("Stopped.\n")
-        elif self._worker:
-            self._worker.stop()
-            self.console.emit("Stopping...\n")
 
     def _tick(self) -> None:
         self._set_status(f"Running {time.monotonic() - self._started:.0f} s", running=True)
         run = self._suite_run
         if run is None:
-            records, self._feed_at = feed.read_new(self._feed_path, self._feed_at)
-            self._apply(Update([r for r in records if "final" not in r], None, ""))
             return
         ended = run.process.poll() is not None
         # Read after the exit check, so the last lines the run wrote are not missed.
@@ -179,16 +171,3 @@ class RunTab(QWidget):  # type: ignore[misc, unused-ignore]
         fill_stats(self.stats_table, final)
         self.final.emit(final)
 
-    def _on_finished(self, stats: dict[str, Any]) -> None:
-        self._tick()
-        self._timer.stop()
-        stopped = self._worker is not None and self._worker.stopped
-        self._set_idle("Run stopped" if stopped else "Run complete")
-        self.stop_btn.setEnabled(False)
-        self._show_final(stats)
-
-    def _on_error(self, msg: str) -> None:
-        self._timer.stop()
-        self._set_idle("Run failed")
-        self.stop_btn.setEnabled(False)
-        QMessageBox.critical(self, "Error", msg)
