@@ -6,7 +6,7 @@ read as Number(__ENV.X || n), which counts as its default n. Anything else needs
 and `reason` says which line stopped the scan.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import tree_sitter_javascript as tsjs
@@ -16,6 +16,7 @@ _JS = Language(tsjs.language())
 _HTTP = {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "del": "DELETE"}
 _WITH_BODY = {"POST", "PUT", "PATCH"}
 _FUNCTIONS = {"function_declaration", "function_expression", "function"}
+_Check = tuple[str, int | None]
 
 
 class _NotPlain(ValueError):
@@ -29,6 +30,7 @@ class HttpCall:
     endpoint: str = ""
     body: Any = None
     headers: dict[str, str] = field(default_factory=dict)
+    expected_status: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +41,8 @@ class ExecFunction:
     think_s: float = 0.0
     reason: str = ""
     helpers: tuple[tuple[str, int], ...] = ()
+    checks: tuple[tuple[str, int], ...] = ()
+    sleeps: int = 0
 
     @property
     def simple(self) -> bool:
@@ -81,7 +85,7 @@ def _number(node: Node | None) -> float | None:
         node.child_by_field_name("left")
     ).startswith("__ENV."):
         node = node.child_by_field_name("right")
-    return float(_text(node)) if node is not None and node.type == "number" else None
+    return _js_number(_text(node)) if node is not None and node.type == "number" else None
 
 
 def _exported(node: Node, constants: dict[str, float]) -> ExecFunction | None:
@@ -99,24 +103,36 @@ def _scan_body(name: str, function: Node, constants: dict[str, float]) -> ExecFu
     statements = body.named_children if body else []
     calls: list[HttpCall] = []
     helpers: list[tuple[str, int]] = []
-    think_s, reason = 0.0, ""
+    checks: list[tuple[str, int]] = []
+    think_s, reason, sleeps = 0.0, "", 0
+    open_call = False
     for statement in statements:
         try:
             found = _statement(statement, constants)
         except _NotPlain as err:
             reason = reason or f"line {statement.start_point.row + 1}: {err}"
             continue
-        if isinstance(found, str):
-            helpers.append((found, statement.start_point.row + 1))
+        line = statement.start_point.row + 1
+        if isinstance(found, list):
+            for label, status in found:
+                if status is None or not open_call or calls[-1].expected_status is not None:
+                    checks.append((label, line))
+                else:
+                    calls[-1] = replace(calls[-1], expected_status=status)
+        elif isinstance(found, str):
+            helpers.append((found, line))
+            open_call = False
         elif isinstance(found, HttpCall):
             calls.append(found)
+            open_call = True
         elif isinstance(found, float):
-            think_s = found
+            think_s, sleeps = found, sleeps + 1
     return ExecFunction(name, function.start_point.row + 1, tuple(calls), think_s, reason,
-                        tuple(helpers))
+                        tuple(helpers), tuple(checks), sleeps)
 
 
-def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float | str | None:
+def _statement(statement: Node,
+               constants: dict[str, float]) -> HttpCall | float | str | list[_Check]:
     expr = _expression(statement)
     if expr is None or expr.type != "call_expression":
         raise _NotPlain(statement.type if expr is None else f"{_text(expr)} is not a call")
@@ -126,7 +142,7 @@ def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float
     if callee == "sleep" and args:
         return _think(args[0], constants)
     if callee == "check":
-        return None
+        return _checks(args)
     verb = callee.removeprefix("http.")
     if callee.startswith("http.") and verb in _HTTP and args:
         return _http_call(_HTTP[verb], args)
@@ -134,7 +150,55 @@ def _statement(statement: Node, constants: dict[str, float]) -> HttpCall | float
     if function is not None and function.type == "identifier" and not args:
         # A local helper call: the report lists it; the calls around it still convert.
         return callee
-    raise _NotPlain(f"{callee}() is not an HTTP call, check or sleep")
+    shown = _text(expr) if function is not None and function.type == "identifier" else f"{callee}()"
+    raise _NotPlain(f"{shown} is not an HTTP call, check or sleep")
+
+
+def _checks(args: list[Node]) -> list[_Check]:
+    """Each named check with its status when it is a plain r.status === N, else None."""
+    if len(args) < 2 or args[1].type != "object":
+        return [("check", None)]
+    found: list[_Check] = []
+    for pair in args[1].named_children:
+        key = pair.child_by_field_name("key")
+        name = _text(key if key is not None else pair).strip("'\"`")
+        found.append((name, _status(pair.child_by_field_name("value"))))
+    return found
+
+
+def _status(fn: Node | None) -> int | None:
+    body = fn.child_by_field_name("body") if fn is not None else None
+    if body is None or body.type != "binary_expression":
+        return None
+    op = _text(body.child_by_field_name("operator"))
+    left, right = body.child_by_field_name("left"), body.child_by_field_name("right")
+    if op not in ("===", "==") or right is None or right.type != "number" \
+            or left is None or left.type != "member_expression":
+        return None
+    target = left.child_by_field_name("object")
+    if _text(left.child_by_field_name("property")) != "status" or target is None \
+            or fn is None or _text(target) != _parameter(fn):
+        return None
+    value = _js_number(_text(right))
+    return int(value) if value is not None and value.is_integer() else None
+
+
+def _parameter(fn: Node) -> str:
+    """The name of an arrow callback's single parameter, as in (r) => or r =>."""
+    single = fn.child_by_field_name("parameter")
+    if single is not None:
+        return _text(single)
+    params = fn.child_by_field_name("parameters")
+    names = params.named_children if params is not None else []
+    return _text(names[0]) if len(names) == 1 and names[0].type == "identifier" else ""
+
+
+def _js_number(text: str) -> float | None:
+    """A JS number literal as a float: decimal, exponent, 0x, 0o, 0b and _ separators; else None."""
+    try:
+        return float(int(text, 0)) if text[:2].lower() in ("0x", "0o", "0b") else float(text)
+    except ValueError:
+        return None
 
 
 def _think(node: Node, constants: dict[str, float]) -> float:
@@ -181,8 +245,10 @@ def _literal(node: Node) -> Any:
     if kind == "string":
         return _text(node)[1:-1]
     if kind == "number":
-        text = _text(node)
-        return float(text) if "." in text else int(text)
+        value = _js_number(_text(node))
+        if value is None:
+            raise _NotPlain(f"{_text(node)} is not a plain number")
+        return int(value) if value.is_integer() and "." not in _text(node) else value
     if kind in ("true", "false", "null"):
         return {"true": True, "false": False, "null": None}[kind]
     if kind == "array":

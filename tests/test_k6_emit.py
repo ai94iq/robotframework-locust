@@ -10,9 +10,10 @@ from typing import Any
 
 import pytest
 import robot
+from locust.exception import StopUser
 
 from LocustLibrary.k6 import emit, options, profile
-from LocustLibrary.k6.scan import ExecFunction, HttpCall
+from LocustLibrary.k6.scan import ExecFunction, HttpCall, scan_source
 from LocustLibrary.scenario import Stage
 
 FIXTURES = Path(__file__).parent / "fixtures" / "k6"
@@ -68,8 +69,14 @@ def test_thresholds_loop_over_listed_endpoints(combined: emit.Conversion) -> Non
 
 
 def test_flows_are_stubs_listed_in_the_report(combined: emit.Conversion) -> None:
-    with pytest.raises(NotImplementedError, match="combined.js line 40"):
-        _tasks(combined, "combined").signupScenario(object())
+    fired: list[dict[str, Any]] = []
+    user = types.SimpleNamespace(environment=types.SimpleNamespace(events=types.SimpleNamespace(
+        request=types.SimpleNamespace(fire=lambda **kw: fired.append(kw)))))
+    with pytest.raises(StopUser):
+        _tasks(combined, "combined").signupScenario(user)
+    assert [(f["request_type"], f["name"]) for f in fired] == [("HAND PORT", "signupScenario")]
+    assert isinstance(fired[0]["exception"], NotImplementedError)
+    assert "combined.js line 40" in str(fired[0]["exception"])
     report = combined.files["reports/combined.k6-report.md"]
     assert "| scenario signup | hand port | line 41: signupFlow()" in report
 
@@ -148,8 +155,14 @@ def test_big_stages_scale_down_to_the_ceiling() -> None:
     opts = options.K6Options((a,), (), False, 0.0, 400)
     assert "    Set Load Stages    10s:100    10s:0\n" in _keywords(emit.convert("x.js", opts, []), "x")
     raised = emit.convert("x.js", opts, [], max_users=400)
-    assert "Run Load Test    max_users=400\n    Export Report    x\n" in _keywords(raised, "x")
+    assert "Run Load Test    max_users=400    stop_on_fail_ratio=20%\n    Export Report    x\n" in _keywords(raised, "x")
     assert "Ramp To 400 Users" in raised.files["tests/x.robot"]
+
+
+def test_small_stage_after_scale_down_keeps_one_user() -> None:
+    a = options.K6Scenario("a", "ramping-vus", "fa", (Stage(10, 1), Stage(10, 1000), Stage(10, 0)))
+    opts = options.K6Options((a,), (), False, 0.0, 1000)
+    assert "    Set Load Stages    10s:1    10s:100    10s:0\n" in _keywords(emit.convert("x.js", opts, []), "x")
 
 
 def test_unparsed_threshold_is_an_unsupported_row() -> None:
@@ -193,6 +206,15 @@ def test_helper_call_keeps_http_calls_and_gets_a_report_row() -> None:
     assert "| helper tokenFlow | hand port | helper.js line 4: tokenFlow() is not converted |" in report
 
 
+def test_more_than_one_sleep_gets_an_approximate_row() -> None:
+    (fn,) = scan_source("export function two() { sleep(1); http.get('https://h/a'); sleep(3); }")
+    assert (fn.think_s, fn.sleeps) == (3.0, 2)
+    opts = options.K6Options((options.K6Scenario("s", "constant-vus", "two",
+                                                 vus=1, duration_s=10),), (), False, 0.0, 1)
+    report = emit.convert("nap.js", opts, [fn]).files["reports/nap.k6-report.md"]
+    assert "| sleep two | approximate | only the last sleep (3s) is used |" in report
+
+
 def test_strict_threshold_emits_a_strict_check() -> None:
     raw = {"http_req_duration": ["p(95)<800", "p(99)<=900"], "http_req_failed": ["rate<0.01"]}
     report = profile.Report()
@@ -208,3 +230,91 @@ def test_plain_executors_get_a_mapped_row(executor: str) -> None:
     report = profile.Report()
     profile.load((options.K6Scenario("a", executor, vus=2, iterations=4, duration_s=5),), 10, report)
     assert report.rows[0][:2] == ("executors", "mapped")
+
+
+def test_mixed_executors_drop_iteration_caps_get_an_approximate_row() -> None:
+    report = profile.Report()
+    lines, _ = profile.load((options.K6Scenario("a", "constant-vus", vus=2, duration_s=30),
+                             options.K6Scenario("b", "shared-iterations", vus=1, iterations=7,
+                                                duration_s=60)), 10, report)
+    assert "iterations=" not in lines[0]
+    assert report.rows[0] == ("executors", "approximate",
+                              ("constant-vus, shared-iterations run as 3 users for 60s; "
+                               "the iteration caps (7) are dropped, so the run ends on run_time alone"))
+
+
+def _one(*urls: str) -> list[ExecFunction]:
+    return [ExecFunction("default", 1, tuple(HttpCall("GET", u, "") for u in urls), 0.0)]
+
+
+def _plain_opts() -> options.K6Options:
+    return options.K6Options((options.K6Scenario("default", "shared-iterations", vus=1,
+                                                 iterations=1),), (), False, 0.0, 1)
+
+
+def test_host_is_the_most_common_origin_and_reported() -> None:
+    done = emit.convert("multi.js", _plain_opts(),
+                        _one("https://a/1", "https://b/1", "https://b/2", "https://a/2", "https://b/3"))
+    assert done.host == "https://b"
+    assert "| host | detected | https://b: most common origin, 3 of 5 calls |" in done.files[
+        "reports/multi.k6-report.md"]
+
+
+def test_host_tie_goes_to_the_first_origin_seen() -> None:
+    done = emit.convert("tie.js", _plain_opts(), _one("https://a/1", "https://b/1", "https://b/2", "https://a/2"))
+    assert done.host == "https://a"
+
+
+def test_host_override_wins_and_is_reported() -> None:
+    done = emit.convert("pick.js", _plain_opts(), _one("https://a/1"), host="http://other:8080")
+    assert done.host == "http://other:8080"
+    assert "| host | set by --host | http://other:8080 |" in done.files["reports/pick.k6-report.md"]
+
+
+def test_host_override_must_be_plain() -> None:
+    with pytest.raises(ValueError, match="host"):
+        emit.convert("pick.js", _plain_opts(), [], host="http://${{1}}")
+
+
+def test_suite_is_safe_by_default(combined: emit.Conversion) -> None:
+    keywords = _keywords(combined, "combined")
+    assert "allowed_hosts=${ALLOWED_HOSTS}" in keywords
+    assert "    Add Stop Rule    fail > 10% for 30s\n" in keywords
+    assert "    Add Stop Rule    idle > 30s\n" in keywords
+    assert "    Run Load Test    " in keywords and "    stop_on_fail_ratio=20%\n" in keywords
+    assert "${ALLOWED_HOSTS}      example.com\n" in emit.env_variables("dev", "https://example.com:8443")
+    report = combined.files["reports/combined.k6-report.md"]
+    assert "| safety | default | allowed_hosts" in report
+    assert "fail > 10% for 30s" in report and "idle > 30s" in report and "stop_on_fail_ratio=20%" in report
+
+
+def test_status_check_sets_expected_status_and_other_checks_get_a_row() -> None:
+    src = """export default function () {
+  const res = http.get('https://h/a', { tags: { endpoint: 'a' } });
+  check(res, { 'is 201': (r) => r.status === 201, 'has id': (r) => r.json('id') !== '' });
+}
+"""
+    fn = scan_source(src)[0]
+    assert fn.calls[0].expected_status == 201
+    assert fn.checks == (("has id", 3),)
+    opts = options.K6Options((options.K6Scenario("s", "constant-vus", "default",
+                                                 vus=1, duration_s=10),), (), False, 0.0, 1)
+    done = emit.convert("chk.js", opts, [fn])
+    tasks = done.files["resources/python/chk_tasks.py"]
+    assert "catch_response=True) as response:" in tasks
+    assert "response.failure(f'status {response.status_code} not 201')" in tasks
+    report = done.files["reports/chk.k6-report.md"]
+    assert "| check has id | unsupported | chk.js line 3: only r.status === N checks convert |" in report
+
+
+def test_check_shapes_that_do_not_map_are_listed() -> None:
+    src = """export default function () {
+  check(null, { 'early': (r) => r.status === 200 });
+  check(res);
+  http.get('https://h/a');
+  check(res, { 'body': (r) => { return true; }, 'size': (r) => r.body.length > 0 });
+}
+"""
+    fn = scan_source(src)[0]
+    assert fn.calls[0].expected_status is None
+    assert fn.checks == (("early", 2), ("check", 3), ("body", 5), ("size", 5))

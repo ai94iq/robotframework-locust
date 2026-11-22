@@ -1,6 +1,9 @@
 """A k6 script from someone else must not put code into the generated files."""
 
+import types
+
 import pytest
+from locust.exception import StopUser
 
 from LocustLibrary.k6 import emit, options
 from LocustLibrary.k6.scan import ExecFunction, HttpCall
@@ -56,8 +59,12 @@ def test_hand_port_reason_stays_text() -> None:
     done = emit.convert("x.js", options.K6Options((scenario,), (), False, 0.0, 1), [fn])
     module: dict[str, object] = {}
     exec(compile(done.files["resources/python/x_tasks.py"], "x_tasks.py", "exec"), module)  # noqa: S102
-    with pytest.raises(NotImplementedError):
-        module["fa"](None)  # type: ignore[operator]
+    fired: list[dict[str, object]] = []
+    user = types.SimpleNamespace(environment=types.SimpleNamespace(events=types.SimpleNamespace(
+        request=types.SimpleNamespace(fire=lambda **kw: fired.append(kw)))))
+    with pytest.raises(StopUser):
+        module["fa"](user)  # type: ignore[operator]
+    assert isinstance(fired[0]["exception"], NotImplementedError)
 
 
 def test_script_name_stays_text() -> None:

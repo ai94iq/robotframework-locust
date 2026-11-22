@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Breaking: a run stopped by the failure breaker (stop_on_fail_ratio) now fails Run Load Test, like a stop rule. Set breaker_fails=False for the old pass.
+- Breaking: rflocust-k6 runs k6 inspect only with --trust-script, because inspect runs the script's init code.
+- Breaking: rflocust-k6 keeps an existing <stem>_tasks.py; pass --force to rewrite it. The report lists kept files and functions they miss.
+- New: stop rule metric idle (`idle > 30s`, unit required) stops a run when no response completed for that long.
+- New: Run Load Test fail_on_busy_cpu=True fails the run when the load generator CPU went over 90%.
+- New: library argument shared_limit (default 10000, 0 = no limit) caps values per shared name; a Take Shared Value timeout counts as a failed SHARED request.
+- New: Start Locust Web and Run Distributed take host and allowed_hosts, checked like Create Load Test; Run Distributed takes users, refuses more than max_users and starts them with --autostart.
+- New: Studio Stop ends a Build tab run, through a stop event on the run config.
+- New: rflocust-k6 --host; the detected host is now the most common origin, with a host report row.
+- New: k6-generated suites are safe by default: allowed_hosts set to the detected host, stop rules fail > 10% for 30s and idle > 30s, stop_on_fail_ratio=20%, and a safety report row.
+- New: k6 check() status assertions on the response set the expected status; other checks get unsupported rows.
+- Fix: k6 hand-port stubs count as failed requests and stop that user, so Should checks see them.
+- Fix: k6 reports a constant-vus and shared-iterations mix as approximate with the dropped iteration caps; --host on a rerun updates the kept env file; a scaled-down stage above 0 keeps at least 1 user.
+- Fix: k6 reports extra sleeps as approximate, shows helper calls with their arguments, and reads every JS number spelling without crashing.
+
 - Fix: the generated k6 suite test is named "... - Mapped Thresholds Met", so it no longer claims unsupported thresholds were checked.
 - Docs: k6-converter.md sample report, suite and stub come from a real run on samples/k6/combined.js.
 - Fix: stop rule p999 now reads the 99.9th percentile, as the Should keywords do (was 9.99th).

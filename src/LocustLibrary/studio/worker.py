@@ -1,6 +1,7 @@
 """Runs the Build tab's tasks in process, so Studio can watch a run without a suite file."""
 
 import os
+import threading
 from typing import Any
 
 from PySide6.QtCore import QThread, Signal
@@ -18,6 +19,15 @@ class RunWorker(QThread):  # type: ignore[misc]
         super().__init__()
         self.kwargs = scenario_kwargs
         self.feed_path = feed_path
+        self._stop = threading.Event()
+
+    @property
+    def stopped(self) -> bool:
+        return self._stop.is_set()
+
+    def stop(self) -> None:
+        """Ends the run at its next check; the stats so far still come back."""
+        self._stop.set()
 
     def run(self) -> None:
         os.environ[feed.ENV] = self.feed_path
@@ -30,6 +40,10 @@ class RunWorker(QThread):  # type: ignore[misc]
             for t in self.kwargs["tasks"]:
                 add = lib.add_get_request if t["method"] == "GET" else lib.add_post_request
                 add(t["name"], t["path"], weight=t["weight"])
+            if lib._config is None:
+                raise RuntimeError("Create Load Test made no run config, so Stop cannot reach "
+                                   "this run; not started")
+            lib._config.stop_event = self._stop
             lib.run_load_test(users=self.kwargs["users"], spawn_rate=self.kwargs["spawn_rate"],
                               run_time=self.kwargs["run_time"])
             self.finished.emit(lib.get_locust_stats())

@@ -89,7 +89,8 @@ class BuildKeywords:
         """Stop the run once `rule` holds for its whole window, like `p95 > 1s for 10s`.
 
         Metrics: `pN` (Locust's last 10 s window), `fail` and `rcNNN` (`?` and `*` match a
-        digit; share since the last check), `cpu` and `mem` (load machine). End with
+        digit; share since the last check), `cpu` and `mem` (load machine), and `idle`
+        (time with no completed response, like `idle > 30s`). End with
         `, stop as passed` to stop without failing; the default fails Run Load Test.
         """
         from .stoprules import parse_rule

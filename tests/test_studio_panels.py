@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-pytest.importorskip("PySide6")
+pytest.importorskip("PySide6", reason="PySide6 not installed: Studio panel colours are untested")
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication

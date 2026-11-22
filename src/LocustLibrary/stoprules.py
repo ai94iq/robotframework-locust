@@ -11,7 +11,7 @@ from typing import Any
 import psutil
 
 _RULE = re.compile(
-    r"^\s*(?P<metric>p\d+(?:\.\d+)?|fail|rc[\d?*]{1,3}|cpu|mem)\s*>\s*(?P<limit>\d+(?:\.\d+)?)"
+    r"^\s*(?P<metric>p\d+(?:\.\d+)?|fail|rc[\d?*]{1,3}|cpu|mem|idle)\s*>\s*(?P<limit>\d+(?:\.\d+)?)"
     r"\s*(?P<unit>ms|s|%)?\s*(?:for\s+(?P<window>\d+(?:\.\d+)?)s)?"
     r"\s*(?:,\s*stop\s+as\s+(?P<status>failed|passed))?\s*$")
 
@@ -27,10 +27,12 @@ class StopRule:
 
 def parse_rule(text: str) -> StopRule:
     found = _RULE.match(text)
-    timed = bool(found and found["metric"].startswith("p"))
+    timed = bool(found and found["metric"][0] in "pi")
     if not found or (found["unit"] == "%") == timed:
         raise ValueError(f"Stop rule '{text}' is not like 'p95 > 1s for 10s, stop as failed'; "
-                         "metrics: pN, fail, rcNNN, cpu, mem")
+                         "metrics: pN, fail, rcNNN, cpu, mem, idle")
+    if found["metric"] == "idle" and not found["unit"]:
+        raise ValueError(f"Stop rule '{text}': idle needs a unit, like 'idle > 30s' or 'idle > 500ms'")
     limit = float(found["limit"]) * (1000 if found["unit"] == "s" else 1)
     return StopRule(found["metric"], limit, float(found["window"] or 0),
                     found["status"] != "passed", text.strip())
@@ -51,6 +53,7 @@ class RuleWatch:
         self._since: dict[int, float] = {}
         self._codes: list[int] = []
         self._seen = {"codes": 0, "requests": 0, "failures": 0}
+        self._last_response = (0, 0.0)
         if any(rule.metric.startswith("rc") for rule in rules):
             local.environment.events.request.add_listener(self._record)
 
@@ -61,6 +64,8 @@ class RuleWatch:
 
     def check(self, elapsed: float) -> str:
         values = self._measure()
+        if any(rule.metric == "idle" for rule in self.rules):
+            values["idle"] = self._idle_ms(elapsed)
         for index, rule in enumerate(self.rules):
             value = values.get(rule.metric)
             if value is None:
@@ -91,6 +96,13 @@ class RuleWatch:
             elif rule.metric == "mem":
                 values["mem"] = psutil.virtual_memory().percent
         return values
+
+    def _idle_ms(self, elapsed: float) -> float:
+        """Time since the count of completed responses last grew, from the run start until the first."""
+        count = self.local.stats.total.num_requests
+        if count != self._last_response[0]:
+            self._last_response = (count, elapsed)
+        return 1000 * (elapsed - self._last_response[1])
 
     def _fail_share(self) -> float | None:
         total = self.local.stats.total

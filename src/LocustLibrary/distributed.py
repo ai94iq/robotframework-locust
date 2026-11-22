@@ -10,7 +10,8 @@ _LOOPBACK = "127.0.0.1"
 
 
 def run_distributed(
-    locustfile: str, processes: int = 2, master_port: int = 5557
+    locustfile: str, processes: int = 2, master_port: int = 5557,
+    extra: list[str] | None = None,
 ) -> tuple[subprocess.Popen[bytes], list[subprocess.Popen[bytes]]]:
     """Run Locust in distributed mode (master + workers)."""
     locustfile = validate_locustfile(locustfile)
@@ -18,7 +19,7 @@ def run_distributed(
         sys.executable, "-m", "locust", "-f", locustfile, "--master",
         "--master-bind-host", _LOOPBACK,
         "--master-bind-port", str(master_port),
-        "--web-host", _LOOPBACK,
+        "--web-host", _LOOPBACK, *(extra or []),
     ])
     workers: list[subprocess.Popen[bytes]] = []
     for _ in range(processes):

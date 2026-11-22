@@ -3,11 +3,15 @@ of a converted k6 project.
 """
 
 from pathlib import PurePath
+from urllib.parse import urlsplit
 
 from robot.utils import escape
 
 from .profile import SEP, Steps
 from .scan import ExecFunction, HttpCall
+
+STOP_RULES = ("fail > 10% for 30s", "idle > 30s")
+FAIL_RATIO = "20%"
 
 
 def _title(script: str) -> str:
@@ -47,7 +51,8 @@ def _keyword(name: str, doc: str, lines: list[str]) -> list[str]:
 def keywords(script: str, insecure: bool, steps: Steps) -> str:
     title = _title(script)
     create = SEP.join(["Create Load Test", "${HOST}", f"verify_tls=${{{not insecure}}}",
-                        "proxy=${PROXY}"])
+                        "proxy=${PROXY}"]) + f"\n{SEP}...{SEP}allowed_hosts=${{ALLOWED_HOSTS}}"
+    stops = [f"Add Stop Rule{SEP}{rule}" for rule in STOP_RULES]
     head = ["*** Settings ***",
             f"Documentation       Scenario keywords for the {script} load test.",
             f"...                 The suite calls only Test {title} Load.",
@@ -59,10 +64,17 @@ def keywords(script: str, insecure: bool, steps: Steps) -> str:
                   [f"Build {title} Users", f"Run {title} Load", f"Check {title} Load"]),
         *_keyword(f"Build {title} Users", "One user class per k6 scenario, weighted by its peak users.",
                   [create, *steps.classes]),
-        *_keyword(f"Run {title} Load", "Runs the converted k6 load profile headless.", steps.load),
+        *_keyword(f"Run {title} Load", "Runs the converted k6 load profile headless.",
+                  [*stops, *(_fail_ratio(line) for line in steps.load)]),
         *_keyword(f"Check {title} Load", "The converted k6 thresholds.", steps.checks),
     ]
     return "\n".join([*head, *body]).rstrip() + "\n"
+
+
+def _fail_ratio(line: str) -> str:
+    if line.startswith("Run Load Test") and "stop_on_fail_ratio=" not in line:
+        return f"{line}{SEP}stop_on_fail_ratio={FAIL_RATIO}"
+    return line
 
 
 def entry_point(collections: list[str]) -> str:
@@ -92,6 +104,7 @@ def env_variables(env: str, host: str) -> str:
         f"Documentation       Values for the {escape(env)} environment.", "", "",
         "*** Variables ***",
         f"${{HOST}}             {escape(host)}",
+        f"${{ALLOWED_HOSTS}}      {escape(urlsplit(host).hostname or '')}",
         "${PROXY}            ${EMPTY}",
     ]) + "\n"
 
@@ -110,7 +123,12 @@ def _function_body(script: str, name: str, fn: ExecFunction | None) -> list[str]
         line = fn.line if fn else 0
         # The reason quotes k6 source, so repr keeps it a plain string literal.
         return [f"    {f'Hand port from {script} line {line}: {why}.'!r}",
-                f"    raise NotImplementedError({f'hand port: {script} line {line}'!r})"]
+                "    from locust.exception import StopUser",
+                f"    error = NotImplementedError({f'hand port: {script} line {line}'!r})",
+                f"    user.environment.events.request.fire(request_type='HAND PORT', name={name!r},",
+                "                                         response_time=0, response_length=0,",
+                "                                         exception=error, context={})",
+                "    raise StopUser"]
     return [_call_line(call) for call in fn.calls] or ["    del user"]
 
 
@@ -124,4 +142,9 @@ def _call_line(call: HttpCall) -> str:
         args.append(f"headers={call.headers!r}")
     args.append(f"name={(call.endpoint or call.url)!r}")
     verb = "delete" if call.method == "DELETE" else call.method.lower()
-    return f"    user.client.{verb}({', '.join(args)})"
+    if call.expected_status is None:
+        return f"    user.client.{verb}({', '.join(args)})"
+    code = call.expected_status
+    return (f"    with user.client.{verb}({', '.join(args)}, catch_response=True) as response:\n"
+            f"        if response.status_code != {code}:\n"
+            f"            response.failure(f'status {{response.status_code}} not {code}')")

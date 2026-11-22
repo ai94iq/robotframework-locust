@@ -110,6 +110,7 @@ class RunTab(QWidget):  # type: ignore[misc]
             self.stop_btn.setEnabled(True)
         else:
             self._start_built_tasks(scenario)
+            self.stop_btn.setEnabled(True)
         self._timer.start()
 
     def _start_built_tasks(self, scenario: dict[str, Any]) -> None:
@@ -126,6 +127,9 @@ class RunTab(QWidget):  # type: ignore[misc]
         if self._suite_run:
             self._suite_run.process.terminate()
             self.console.emit("Stopped.\n")
+        elif self._worker:
+            self._worker.stop()
+            self.console.emit("Stopping...\n")
 
     def _tick(self) -> None:
         self._set_status(f"Running {time.monotonic() - self._started:.0f} s", running=True)
@@ -178,10 +182,13 @@ class RunTab(QWidget):  # type: ignore[misc]
     def _on_finished(self, stats: dict[str, Any]) -> None:
         self._tick()
         self._timer.stop()
-        self._set_idle("Run complete")
+        stopped = self._worker is not None and self._worker.stopped
+        self._set_idle("Run stopped" if stopped else "Run complete")
+        self.stop_btn.setEnabled(False)
         self._show_final(stats)
 
     def _on_error(self, msg: str) -> None:
         self._timer.stop()
         self._set_idle("Run failed")
+        self.stop_btn.setEnabled(False)
         QMessageBox.critical(self, "Error", msg)

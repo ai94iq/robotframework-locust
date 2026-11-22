@@ -78,7 +78,8 @@ def test_second_web_ui_stops_the_first(tmp_path, monkeypatch) -> None:
     locustfile.write_text("x = 1\n", encoding="utf-8")
     made: list[_Proc] = []
 
-    def start(path: str, port: int = 8089, host: str = "127.0.0.1") -> _Proc:
+    def start(path: str, port: int = 8089, host: str = "127.0.0.1",
+              **_unused: object) -> _Proc:
         proc = _Proc()
         made.append(proc)
         return proc

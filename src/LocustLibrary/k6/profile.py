@@ -51,9 +51,15 @@ def classes(scenarios: tuple[K6Scenario, ...], by_name: dict[str, ExecFunction],
             report.add(f"scenario {s.name}", "hand port", f"exec function {s.exec_name} not found")
         elif fn.simple:
             report.add(f"scenario {s.name}", "mapped", f"{len(fn.calls)} HTTP calls")
+            if fn.sleeps > 1:
+                report.add(f"sleep {s.exec_name}", "approximate",
+                           f"only the last sleep ({fn.think_s:g}s) is used")
             for helper, line in fn.helpers:
                 report.add(f"helper {helper}", "hand port",
                            f"{script} line {line}: {helper}() is not converted")
+            for name, line in fn.checks:
+                report.add(f"check {name}", "unsupported",
+                           f"{script} line {line}: only r.status === N checks convert")
         else:
             report.add(f"scenario {s.name}", "hand port", fn.reason)
     return lines
@@ -67,7 +73,12 @@ def load(scenarios: tuple[K6Scenario, ...], max_users: int,
     users = sum(_peak(s) for s in scenarios)
     seconds = max((s.duration_s for s in scenarios), default=0.0) or 600.0
     iterations = sum(s.iterations for s in scenarios) if kinds <= {"shared-iterations"} else 0
-    if kinds <= {"shared-iterations", "constant-vus"}:
+    if kinds == {"shared-iterations", "constant-vus"}:
+        caps = sum(s.iterations for s in scenarios)
+        report.add("executors", "approximate",
+                   f"{', '.join(sorted(kinds))} run as {users} users for {seconds:g}s; "
+                   f"the iteration caps ({caps}) are dropped, so the run ends on run_time alone")
+    elif kinds <= {"shared-iterations", "constant-vus"}:
         report.add("executors", "mapped", f"{', '.join(sorted(kinds))} run as {users} users")
     else:
         report.add("executors", "approximate",
@@ -98,7 +109,7 @@ def _staged(scenarios: tuple[K6Scenario, ...], max_users: int,
     scale = min(1.0, max_users / peak) if peak else 1.0
     if scale < 1.0:
         report.add("users", "clamped", f"{peak} users cut to max_users={max_users}")
-    scaled = [round(t * scale) for t in totals]
+    scaled = [max(1, round(t * scale)) if t else 0 for t in totals]
     stages = SEP.join(f"{st.seconds:g}s:{t}" for st, t in zip(first, scaled, strict=True))
     lines = [f"Set Load Stages{SEP}{stages}", f"Run Load Test{SEP}max_users={max_users}"]
     return lines, f"Ramp To {_count(max(scaled, default=0), 'User')}"

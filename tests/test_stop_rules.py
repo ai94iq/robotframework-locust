@@ -135,3 +135,23 @@ def test_p999_rule_reads_the_99_9th_percentile() -> None:
     local.stats.total.get_current_response_time_percentile = shares.append
     RuleWatch([parse_rule("p999 > 1s"), parse_rule("p99.9 > 1s")], local).check(1)
     assert shares == pytest.approx([0.999, 0.999])
+
+
+def test_idle_rule_fires_when_no_response_completes_for_its_limit() -> None:
+    local = _local()
+    rule = parse_rule("idle > 30s")
+    assert (rule.metric, rule.limit, rule.fail_run) == ("idle", 30000, True)
+    watch = RuleWatch([rule], local)
+    local.stats.total.num_requests = 5
+    assert watch.check(20) == ""
+    assert watch.check(50) == ""
+    local.stats.total.num_requests = 6
+    assert watch.check(60) == ""
+    assert watch.check(91) == "stopped after 91 s: idle > 30s"
+    assert watch.failed
+
+
+@pytest.mark.parametrize("text", ["idle > 30%", "idle>5% for 2s"])
+def test_idle_rule_needs_a_time_limit(text: str) -> None:
+    with pytest.raises(ValueError, match="Stop rule"):
+        parse_rule(text)

@@ -67,7 +67,7 @@ def test_what_makes_a_function_need_a_hand_port(body: str, reason: str) -> None:
 def test_helper_called_with_arguments_needs_hand_port() -> None:
     (only,) = scan.scan_source('export default function () { login("u"); }')
     assert not only.simple
-    assert only.reason == "line 1: login() is not an HTTP call, check or sleep"
+    assert only.reason == 'line 1: login("u") is not an HTTP call, check or sleep'
     assert only.helpers == ()
 
 

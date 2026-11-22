@@ -49,6 +49,14 @@ def fail_breaker(local: Any, limit: float, warmup: float) -> Callable[[float], s
     return check
 
 
+STOP_REASON = "stopped from Studio"
+
+
+def stop_check(event: Any) -> Callable[[float], str]:
+    """A wait check that ends the run, not as a failure, once `event` is set."""
+    return lambda elapsed: STOP_REASON if event is not None and event.is_set() else ""
+
+
 def _wait_until(seconds: float, budget: Budget,
                 breaker: Callable[[float], str] | None = None) -> str:
     start = time.monotonic()
@@ -80,13 +88,22 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
             runner.start_shape()
             seconds = shape.total
         watch = RuleWatch(config.stop_rules, runner)
-        stopped = _wait_until(seconds, budget, _first_reason(
-            fail_breaker(runner, config.stop_on_fail_ratio, config.fail_ratio_warmup), watch.check))
+        breaker = fail_breaker(runner, config.stop_on_fail_ratio, config.fail_ratio_warmup)
+        tripped: list[str] = []
+
+        def breaker_check(elapsed: float) -> str:
+            reason = breaker(elapsed)
+            tripped.append(reason)
+            return reason
+
+        stopped = _wait_until(seconds, budget, _first_reason(breaker_check, watch.check,
+                                                           stop_check(config.stop_event)))
         runner.quit()
         runner.greenlet.join(timeout=10)
     history.kill(block=False)
     stats = _finish(env, calls)
-    stats.stopped, stats.stop_failed = stopped, watch.failed
+    broke = bool(stopped) and stopped == tripped[-1]
+    stats.stopped, stats.stop_failed = stopped, watch.failed or (broke and config.breaker_fails)
     return stats
 
 

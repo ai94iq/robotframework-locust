@@ -36,3 +36,38 @@ def test_a_new_run_starts_with_no_values(monkeypatch: pytest.MonkeyPatch) -> Non
     lib.run_load_test(users=1)
     with pytest.raises(AssertionError):
         lib.take_shared_value("ids", "10ms")
+
+
+def test_a_full_name_refuses_more_values() -> None:
+    lib = LocustLibrary(shared_limit=2)
+    lib.put_shared_value("ids", 1)
+    lib.put_shared_value("ids", 2)
+    with pytest.raises(AssertionError, match="Shared value 'ids' is full at 2 values"):
+        lib.put_shared_value("ids", 3)
+
+
+def test_the_default_limit_is_10000_and_0_means_no_limit() -> None:
+    assert LocustLibrary()._shared_limit == 10000
+    lib = LocustLibrary(shared_limit=0)
+    for i in range(10001):
+        lib.put_shared_value("ids", i)
+
+
+def test_a_take_timeout_in_a_run_counts_as_a_failed_request() -> None:
+    from types import SimpleNamespace
+
+    from locust.event import Events
+
+    from LocustLibrary import users
+
+    seen: list[dict[str, object]] = []
+    events = Events()
+    events.request.add_listener(lambda **kw: seen.append(kw))
+    users._running.user = SimpleNamespace(environment=SimpleNamespace(events=events))
+    try:
+        with pytest.raises(AssertionError):
+            LocustLibrary().take_shared_value("users", "10ms")
+    finally:
+        users._running.user = None
+    assert [(s["request_type"], s["name"]) for s in seen] == [("SHARED", "Take Shared Value users")]
+    assert isinstance(seen[0]["exception"], AssertionError)

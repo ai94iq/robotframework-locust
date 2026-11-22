@@ -12,8 +12,9 @@ from typing import Any
 
 from gevent import monkey
 
-from LocustLibrary import feed
+from LocustLibrary import feed, runner
 
+STOP_REASON = runner.STOP_REASON
 _ROBOT_PAGES = {"log.html", "report.html"}
 
 
@@ -129,3 +130,4 @@ def start_suite(suite: str) -> SuiteRun:
                          **options)
     _lower_priority(process.pid)
     return SuiteRun(process, outdir)
+
