@@ -91,7 +91,7 @@ def _mark_aggregated(table: QTableWidget, item: QTableWidgetItem) -> None:
     item.setBackground(QBrush(QColor(table.property("raisedColor") or "#232328")))
 
 
-class Charts(QWidget):  # type: ignore[misc]
+class Charts(QWidget):  # type: ignore[misc, unused-ignore]
     """The three charts of Locust's report, drawn from the run feed."""
 
     def __init__(self) -> None:

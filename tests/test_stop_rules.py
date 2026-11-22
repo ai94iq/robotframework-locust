@@ -124,6 +124,51 @@ def test_a_failed_stop_fails_the_keyword(monkeypatch: pytest.MonkeyPatch) -> Non
     assert seen[0][0].metric == "cpu"
 
 
+@pytest.mark.parametrize("rule", ["cpu > 90%", "mem > 90%"])
+def test_a_load_machine_stop_is_marked(monkeypatch: pytest.MonkeyPatch, rule: str) -> None:
+    fake = SimpleNamespace(cpu_percent=lambda: 95.0, virtual_memory=lambda: SimpleNamespace(percent=95.0))
+    monkeypatch.setattr(stoprules, "psutil", fake)
+    watch = RuleWatch([parse_rule(rule)], _local())
+    assert watch.check(1) != ""
+    assert watch.failed and watch.machine
+
+
+def test_a_target_stop_is_not_a_load_machine_stop() -> None:
+    local = _local()
+    watch = RuleWatch([parse_rule("rc5* > 0%")], local)
+    _respond(local, 500)
+    assert watch.check(1) != "" and not watch.machine
+
+
+def test_a_load_machine_stop_is_inconclusive(monkeypatch: pytest.MonkeyPatch) -> None:
+    import LocustLibrary as lib_module
+
+    monkeypatch.setattr(lib_module, "run_load_test", lambda _s, _c: Stats(
+        stopped="stopped after 3 s: cpu > 90%", stop_failed=True, stop_machine=True))
+    lib = LocustLibrary()
+    lib.create_load_test("http://127.0.0.1", allowed_hosts="127.0.0.1")
+    with pytest.raises(AssertionError, match=r"^Inconclusive: the load machine .*cpu > 90%"):
+        lib.run_load_test(users=1)
+
+
+def test_a_load_machine_stop_as_passed_still_passes(monkeypatch: pytest.MonkeyPatch) -> None:
+    import LocustLibrary as lib_module
+
+    monkeypatch.setattr(lib_module, "run_load_test", lambda _s, _c: Stats(
+        stopped="stopped after 3 s: cpu > 90%, stop as passed", stop_machine=True))
+    lib = LocustLibrary()
+    lib.create_load_test("http://127.0.0.1", allowed_hosts="127.0.0.1")
+    lib.run_load_test(users=1)
+
+
+@pytest.mark.parametrize(("tripped", "machine"), [("stopped: cpu", False), ("", True)])
+def test_a_breaker_stop_is_never_a_load_machine_stop(tripped: str, machine: bool) -> None:
+    from LocustLibrary.runner import _stop_outcome
+
+    watch = SimpleNamespace(failed=False, machine=True)
+    assert _stop_outcome("stopped: cpu", [tripped], watch, True) == ("stopped: cpu", not machine, machine)
+
+
 def test_a_rule_needs_a_load_test_first() -> None:
     with pytest.raises(RuntimeError, match="Create Load Test"):
         LocustLibrary().add_stop_rule("cpu > 90%")

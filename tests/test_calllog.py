@@ -4,7 +4,7 @@ import time
 from types import SimpleNamespace
 from typing import Any
 
-from LocustLibrary.calllog import CallLog, mask_body, mask_headers
+from LocustLibrary.calllog import CallLog, mask_body, mask_headers, mask_url, masked_names
 
 
 def _response(status: int = 201, body: Any = '{"password": "p", "user": "a"}',
@@ -68,3 +68,58 @@ def test_plain_text_is_kept_and_cut() -> None:
     assert mask_body(None) == ""
     assert mask_body("<html>hi</html>") == "<html>hi</html>"
     assert mask_body("x" * 10005).endswith("... (cut at 10000 characters)")
+
+
+def test_api_key_headers_are_masked_by_default() -> None:
+    names = ["X-Api-Key", "Api-Key", "X-Auth-Token", "X-Access-Token"]
+    assert mask_headers({n: "s" for n in names}) == {n: "***" for n in names}
+
+
+def test_extra_masked_names_extend_headers_and_bodies() -> None:
+    extra = masked_names(" X-Tenant-Secret , PIN,")
+    assert mask_headers({"x-tenant-secret": "s"}, extra) == {"x-tenant-secret": "***"}
+    assert mask_body('{"Pin": "1"}', extra) == '{"Pin": "***"}'
+    assert mask_url("/p?pin=1", extra) == "/p?pin=***"
+    calls = CallLog(masked=extra)
+    calls.record("POST", "/x", 5, response=_response(body='{"pin": "9"}'))
+    assert "&quot;pin&quot;: &quot;***&quot;" in calls.entries[0]
+
+
+def test_query_values_of_masked_names_are_masked() -> None:
+    assert mask_url("https://h/p?access_token=t&q=1") == "https://h/p?access_token=***&q=1"
+    assert mask_url("/p?api-key=k") == "/p?api-key=***"
+    assert mask_url("/p") == "/p"
+    assert mask_url("/p?%%%=&&") == "/p?%%%=&&"
+
+
+def test_a_bare_key_does_not_unmask_the_query() -> None:
+    assert mask_url("/p?access_token=abc&debug") == "/p?access_token=***&debug"
+    assert mask_url("https://h/p?debug&Password=x&q=1") == "https://h/p?debug&Password=***&q=1"
+
+
+def test_failure_text_and_request_name_are_masked() -> None:
+    calls = CallLog()
+    calls.record("GET", "/p?access_token=abc", 5,
+                 exception=ConnectionError("Max retries exceeded with url: /p?debug&access_token=abc"))
+    assert "abc" not in calls.entries[0]
+    assert "access_token=***" in calls.entries[0]
+
+
+def test_library_mask_argument_stays_with_its_library() -> None:
+    from LocustLibrary import LocustLibrary
+
+    LocustLibrary(mask="X-Leak-Secret")
+    assert mask_headers({"X-Leak-Secret": "s"}) == {"X-Leak-Secret": "s"}
+    assert mask_body('{"x-leak-secret": "1"}') == '{"x-leak-secret": "1"}'
+
+
+def test_library_mask_reaches_its_run_config(monkeypatch) -> None:
+    import LocustLibrary as lib_module
+    from LocustLibrary.scenario import Stats
+
+    seen: list[frozenset[str]] = []
+    monkeypatch.setattr(lib_module, "run_load_test", lambda _s, c: seen.append(c.mask) or Stats())
+    lib = lib_module.LocustLibrary(mask="X-Own")
+    lib.create_load_test("https://example.com")
+    lib.run_load_test(users=1)
+    assert seen == [frozenset({"x-own"})]

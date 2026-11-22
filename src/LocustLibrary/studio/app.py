@@ -5,7 +5,7 @@ from typing import Any
 
 try:
     from PySide6.QtCore import Qt
-    from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
+    from PySide6.QtGui import QKeySequence, QResizeEvent, QShortcut, QTextCursor
     from PySide6.QtWidgets import (
         QApplication,
         QCheckBox,
@@ -33,7 +33,7 @@ from .sidebar import Sidebar
 from .themes import THEMES, get_theme
 
 
-class MainWindow(QMainWindow):  # type: ignore[misc]
+class MainWindow(QMainWindow):  # type: ignore[misc, unused-ignore]
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("robotframework-locust studio")
@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
             self.pages.addWidget(page)
             self.tabs.addTab(title)
         self.tabs.currentChanged.connect(self.pages.setCurrentIndex)
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setHandleWidth(1)
         splitter.addWidget(self.sidebar)
         splitter.addWidget(self.pages)
@@ -108,11 +108,11 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         return header
 
     def _toggle_rtl(self, checked: bool) -> None:
-        QApplication.instance().setLayoutDirection(
-            Qt.RightToLeft if checked else Qt.LeftToRight
+        QApplication.setLayoutDirection(
+            Qt.LayoutDirection.RightToLeft if checked else Qt.LayoutDirection.LeftToRight
         )
 
-    def resizeEvent(self, event: object) -> None:
+    def resizeEvent(self, event: QResizeEvent) -> None:
         super().resizeEvent(event)
         if hasattr(self, "sidebar"):
             self.sidebar.setVisible(self.width() >= 1000)
@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):  # type: ignore[misc]
         return w
 
     def _append_log(self, text: str) -> None:
-        self.log_text.moveCursor(QTextCursor.End)
+        self.log_text.moveCursor(QTextCursor.MoveOperation.End)
         self.log_text.insertPlainText(text)
         self.log_text.ensureCursorVisible()
         self.log_text.horizontalScrollBar().setValue(0)

@@ -23,6 +23,10 @@ class _NotPlain(ValueError):
     """The node needs a hand port; the message says why."""
 
 
+class OptionsConflict(ValueError):
+    """Two options k6 refuses together; no k6 inspect can resolve it."""
+
+
 @dataclass(frozen=True, slots=True)
 class HttpCall:
     method: str
@@ -55,6 +59,78 @@ def scan_source(source: str) -> list[ExecFunction]:
     found = (_exported(node, constants) for node in root.named_children
              if node.type == "export_statement")
     return [fn for fn in found if fn is not None]
+
+
+def static_options(source: str) -> dict[str, Any]:
+    """`export const options` in the shape k6 inspect gives, when every value is a literal.
+
+    Raises ValueError naming the first option that is computed, so the caller can fall back to k6 inspect.
+    """
+    root = Parser(_JS).parse(source.encode("utf-8")).root_node
+    for node in root.named_children:
+        declaration = node.child_by_field_name("declaration") if node.type == "export_statement" else None
+        if declaration is None or declaration.type != "lexical_declaration":
+            continue
+        for declarator in declaration.named_children:
+            if _text(declarator.child_by_field_name("name")) != "options":
+                continue
+            value = declarator.child_by_field_name("value")
+            if value is None or value.type != "object":
+                raise ValueError("options is not a literal object")
+            return _with_default_scenario(_static(value, "options"))
+    raise ValueError("no export const options")
+
+
+def _static(node: Node, path: str) -> Any:
+    if node.type == "object":
+        found: dict[str, Any] = {}
+        for pair in (c for c in node.named_children if c.type != "comment"):
+            key = pair.child_by_field_name("key")
+            if pair.type != "pair" or key is None or key.type not in ("property_identifier", "string"):
+                raise ValueError(f"{path} has a key that is not a plain name")
+            name = _text(key).strip("'\"")
+            found[name] = _static(pair.child_by_field_name("value") or pair, f"{path}.{name}")
+        return found
+    if node.type == "array":
+        items = [c for c in node.named_children if c.type != "comment"]
+        return [_static(item, f"{path}[{i}]") for i, item in enumerate(items)]
+    try:
+        return _literal(node)
+    except _NotPlain:
+        raise ValueError(f"{path} is not a literal") from None
+
+
+def _refuse_with(shortcut: str, data: dict[str, Any], others: tuple[str, ...]) -> None:
+    for other in others:
+        if other == "stages" and data.get("stages") or other == "scenarios" and data.get("scenarios") is not None:
+            raise OptionsConflict(f"using `{shortcut}` and `{other}` options simultaneously is not allowed")
+
+
+def _with_default_scenario(data: dict[str, Any]) -> dict[str, Any]:
+    """k6 turns top-level vus, iterations, duration and stages into one scenario named default.
+
+    The order and conflicts follow k6's DeriveScenariosFromShortcuts. k6's no-option default is
+    per-vu-iterations with 1 VU and 1 iteration; shared-iterations 1/1 here gives the same load.
+    """
+    stages, vus = data.get("stages"), data.get("vus", 1)
+    if "iterations" in data:
+        _refuse_with("iterations", data, ("stages", "scenarios"))
+        scenario = {"executor": "shared-iterations", "vus": vus, "iterations": data["iterations"]}
+        if "duration" in data:
+            scenario["maxDuration"] = data["duration"]
+    elif "duration" in data:
+        _refuse_with("duration", data, ("stages", "scenarios"))
+        scenario = {"executor": "constant-vus", "vus": vus, "duration": data["duration"]}
+    elif stages:
+        _refuse_with("stages", data, ("scenarios",))
+        scenario = {"executor": "ramping-vus", "startVUs": vus, "stages": stages}
+    elif "vus" in data and stages is None:
+        scenario = {"executor": "shared-iterations", "vus": vus, "iterations": vus}
+    elif data.get("scenarios"):
+        return data
+    else:
+        scenario = {"executor": "shared-iterations", "vus": 1, "iterations": 1}
+    return {**data, "scenarios": {"default": scenario}}
 
 
 def _constants(root: Node) -> dict[str, float]:

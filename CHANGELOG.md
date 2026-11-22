@@ -3,8 +3,17 @@
 ## Unreleased
 
 - Breaking: a run stopped by the failure breaker (stop_on_fail_ratio) now fails Run Load Test, like a stop rule. Set breaker_fails=False for the old pass.
-- Breaking: rflocust-k6 runs k6 inspect only with --trust-script, because inspect runs the script's init code.
+- Breaking: rflocust-k6 runs k6 inspect (needed only for computed options) only with --trust-script, because inspect runs the script's init code.
 - Breaking: rflocust-k6 keeps an existing <stem>_tasks.py; pass --force to rewrite it. The report lists kept files and functions they miss.
+- Breaking: an empty proxy= now reads HTTPS_PROXY / HTTP_PROXY from the environment; proxy=none turns that off. New no_proxy= bypass list.
+- Breaking: the max_users check counts the users that really run; a fixed_count sum above users only warns.
+- Breaking: a cpu or mem stop rule fails the run as "Inconclusive: the load machine ..." instead of as a target failure.
+- Breaking: k6-generated suites refuse to start while hand-port stubs remain, unless ${ALLOW_STUBS} is True.
+- New: X-Api-Key, Api-Key, X-Auth-Token and X-Access-Token are masked by default; library argument mask= adds names; masked query values and failure text are masked.
+- New: verify_tls takes a CA bundle path.
+- New: Should keywords warn after a run that overloaded the load machine CPU.
+- New: rflocust-k6 reads literal k6 options without running the script; --trust-script is needed only for computed options. --force keeps numbered backups of the tasks file.
+- New: Studio Open suite reads the suite without importing its Python libraries or variable files.
 - New: stop rule metric idle (`idle > 30s`, unit required) stops a run when no response completed for that long.
 - New: Run Load Test fail_on_busy_cpu=True fails the run when the load generator CPU went over 90%.
 - New: library argument shared_limit (default 10000, 0 = no limit) caps values per shared name; a Take Shared Value timeout counts as a failed SHARED request.

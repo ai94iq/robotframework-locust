@@ -34,8 +34,9 @@ class Scenario:
     name: str = "RFUser"
     weight: int = 1
     fixed_count: int = 0
-    verify_tls: bool = True
+    verify_tls: bool | str = True
     proxy: str = ""
+    no_proxy: str = ""
     wait_min: float = 1.0
     wait_max: float = 3.0
     pacing: float = 0.0
@@ -66,6 +67,7 @@ class RunConfig:
     breaker_fails: bool = True
     stop_rules: list[StopRule] = field(default_factory=list)
     stop_event: Any = field(default=None, repr=False, compare=False)
+    mask: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -101,4 +103,5 @@ class Stats:
     report_html: str = field(default="", repr=False)
     stopped: str = ""
     stop_failed: bool = False
+    stop_machine: bool = False
     cpu_busy: bool = False

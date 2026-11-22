@@ -111,6 +111,24 @@ def test_kept_tasks_file_that_does_not_parse_is_reported(monkeypatch, tmp_path: 
     assert "| tasks file | missing | default |" in report
 
 
+def test_kept_env_file_without_allow_stubs_gets_the_line(monkeypatch, tmp_path: Path) -> None:
+    from tests.test_k6_cli import SCRIPT, _inspect
+
+    monkeypatch.setattr(cli, "run_inspect", _inspect({}))
+    script = tmp_path / "smoke.js"
+    script.write_text(SCRIPT, encoding="utf-8")
+    out = tmp_path / "robot"
+    env = out / "resources/dev_variables.resource"
+    env.parent.mkdir(parents=True)
+    env.write_text("*** Variables ***\n${HOST}             http://old\n", encoding="utf-8")
+    cli.main([str(script), "--trust-script", "--out", str(out)])
+    assert env.read_text(encoding="utf-8").endswith("${HOST}             http://old\n${ALLOW_STUBS}      ${False}\n")
+    report = (out / "reports/smoke.k6-report.md").read_text(encoding="utf-8")
+    assert "| env file | updated | resources/dev_variables.resource had no ${ALLOW_STUBS}; added it as ${False} |" in report
+    cli.main([str(script), "--trust-script", "--out", str(out)])
+    assert env.read_text(encoding="utf-8").count("${ALLOW_STUBS}") == 1
+
+
 def test_distributed_users_start_without_the_web_form(tmp_path, monkeypatch) -> None:
     from LocustLibrary import distributed
 

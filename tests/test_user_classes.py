@@ -67,7 +67,7 @@ def test_run_builds_every_class(monkeypatch) -> None:
         return type("Env", (), {"create_local_runner": lambda self: Local()})()
 
     monkeypatch.setattr(runner, "_patch_gevent", lambda: None)
-    monkeypatch.setattr(runner, "_observe", lambda _env: CallLog())
+    monkeypatch.setattr(runner, "_observe", lambda _env, _mask: CallLog())
     monkeypatch.setattr(runner, "_start_history", lambda _r: SimpleNamespace(kill=lambda **_k: None))
     monkeypatch.setattr(runner, "_finish", lambda _env, _calls: Stats())
     monkeypatch.setattr(runner.time, "sleep", lambda _seconds: None)

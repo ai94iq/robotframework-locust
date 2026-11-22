@@ -20,6 +20,9 @@ def _output_dir() -> str | None:
         return None
 
 
+_BUSY_CPU = "Load generator CPU went over 90%; these numbers may be skewed by an overloaded load machine"
+
+
 class CheckKeywords:
     """Keywords that read the last run's stats and fail on a missed target."""
 
@@ -41,6 +44,10 @@ class CheckKeywords:
             return {}
         return self._stats.aggregated.__dict__
 
+    def _warn_if_busy(self) -> None:
+        if self._stats is not None and self._stats.cpu_busy:
+            logger.warn(_BUSY_CPU)
+
     def _aggregated(self) -> StatsRow:
         stats = self._stats
         if stats is None or stats.aggregated is None:
@@ -52,6 +59,7 @@ class CheckKeywords:
     @keyword
     def should_have_no_failures(self) -> None:
         """Fail if any request failed."""
+        self._warn_if_busy()
         row = self._aggregated()
         if row.failure_count > 0:
             raise AssertionError(f"Failures: {row.failure_count}")
@@ -72,6 +80,7 @@ class CheckKeywords:
             targets = [self._stats.aggregated]
         if not targets:
             raise RuntimeError(f"Endpoint not found: {endpoint}")
+        self._warn_if_busy()
         actual = max(_measured_percentile(r, percentile) for r in targets)
         if actual > max_ms:
             raise AssertionError(
@@ -81,6 +90,7 @@ class CheckKeywords:
     @keyword
     def should_meet_throughput(self, minimum: str) -> None:
         """Assert RPS >= minimum."""
+        self._warn_if_busy()
         row = self._aggregated()
         min_rps = float(minimum)
         if row.rps < min_rps:
@@ -89,6 +99,7 @@ class CheckKeywords:
     @keyword
     def should_meet_error_rate(self, maximum: str, endpoint: str = "") -> None:
         """Assert error rate <= maximum percent, overall or for one endpoint."""
+        self._warn_if_busy()
         rows = self._endpoint_rows(endpoint) if endpoint else [self._aggregated()]
         max_rate = float(maximum.rstrip("%")) / 100.0
         rate = sum(r.failure_count for r in rows) / sum(r.request_count for r in rows)

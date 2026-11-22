@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 
-class BuildTab(QWidget):  # type: ignore[misc]
+class BuildTab(QWidget):  # type: ignore[misc, unused-ignore]
     def __init__(self) -> None:
         super().__init__()
         self.tasks: list[dict[str, Any]] = []

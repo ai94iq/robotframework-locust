@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from LocustLibrary.suiteplan import read_suite
 
 
-class Sidebar(QWidget):  # type: ignore[misc]
+class Sidebar(QWidget):  # type: ignore[misc, unused-ignore]
     suite_opened = Signal(str)
 
     def __init__(self) -> None:
@@ -51,7 +51,7 @@ class Sidebar(QWidget):  # type: ignore[misc]
             self.open_suite(path)
 
     def open_suite(self, path: str) -> None:
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
             plan = read_suite(path)
         finally:

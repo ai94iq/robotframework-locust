@@ -1,16 +1,18 @@
 """Read a load suite's user classes and tasks for Studio.
 
-A Robot dry run walks the suite, so classes built inside resource keywords are found the way
-Robot resolves them. Library keywords do not run in a dry run, so nothing is sent.
+The suite and its resource files are parsed, never run: no library or variable file is imported.
+User keywords are followed to the LocustLibrary keywords they call, and arguments resolve from
+*** Variables *** sections of the suite and its resource files and from the user keyword's own
+[Arguments]. Each child suite of a directory is read with its own variables and keywords.
 """
 
-import io
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
-from robot.errors import VariableError
-from robot.libraries.BuiltIn import BuiltIn
-from robot.run import run
+from robot.errors import DataError
+from robot.running import ResourceFileBuilder, TestSuite, TestSuiteBuilder
+from robot.variables import Variables
 
 _TASKS = {"Add Python Task", "Add Get Request", "Add Post Request", "Add Task"}
 
@@ -50,27 +52,86 @@ class SuitePlan:
         return self.classes[-1]
 
 
-class _Collector:
-    ROBOT_LISTENER_API_VERSION = 3
+def _norm(name: str) -> str:
+    return name.lower().replace(" ", "").replace("_", "")
 
+
+_KEYWORDS = {_norm(k): k for k in
+             {"Create Load Test", "Add User Class", "Set Wait Time", "Set Pacing", "Add Stop Rule", *_TASKS}}
+
+
+class _Reader:
     def __init__(self, plan: SuitePlan) -> None:
         self.plan = plan
+        self.variables = Variables()
+        self.keywords: dict[str, Any] = {}
+        self.seen: set[Path] = set()
 
-    def start_library_keyword(self, _data: Any, implementation: Any, result: Any) -> None:
-        if implementation.owner.name == "LocustLibrary":
-            self.plan.add(result.name, tuple(_resolve(str(arg)) for arg in result.args))
+    def load(self, resource: Any, source: Path) -> None:
+        self.variables.set_from_variable_section(resource.variables)
+        for keyword in resource.keywords:
+            self.keywords.setdefault(_norm(keyword.name), keyword)
+        for item in resource.imports:
+            if item.type != "RESOURCE":
+                continue
+            path = (source.parent / self.resolve(item.name)).resolve()
+            if path.is_file() and path not in self.seen:
+                self.seen.add(path)
+                self.load(ResourceFileBuilder().build(path), path)
 
+    def resolve(self, arg: str) -> str:
+        try:
+            return str(self.variables.replace_string(arg))
+        except DataError:
+            return arg
 
-def _resolve(arg: str) -> str:
-    # A dry run passes arguments as written; values from resource files still sit in scope.
-    try:
-        return str(BuiltIn().replace_variables(arg))
-    except VariableError:
-        return arg
+    def walk(self, body: Any, stack: tuple[str, ...] = ()) -> None:
+        for step in body:
+            if step.type in ("KEYWORD", "SETUP", "TEARDOWN") and step.name:
+                self.call(step.name, step.args, stack)
+            if hasattr(step, "body"):
+                self.walk(step.body, stack)
+
+    def call(self, name: str, args: Any, stack: tuple[str, ...]) -> None:
+        key = _norm(name.removeprefix("LocustLibrary."))
+        if key in _KEYWORDS:
+            self.plan.add(_KEYWORDS[key], tuple(self.resolve(str(arg)) for arg in args))
+        elif key in self.keywords and key not in stack:
+            keyword = self.keywords[key]
+            values = [self.resolve(str(arg)) for arg in args]
+            outer = self.variables
+            self.variables = outer.copy()
+            try:
+                self._bind(keyword.args, values)
+                self.walk([keyword.setup, *keyword.body, keyword.teardown], (*stack, key))
+            finally:
+                self.variables = outer
+
+    def _bind(self, spec: Any, values: list[str]) -> None:
+        names = list(spec.positional)
+        bound = {name: self.resolve(str(value)) for name, value in spec.defaults.items()}
+        free = iter(names)
+        for value in values:
+            name, sep, named = value.partition("=")
+            if sep and name in names:
+                bound[name] = named
+            elif (slot := next(free, None)) is not None:
+                bound[slot] = value
+        for name, value in bound.items():
+            self.variables[f"${{{name}}}"] = value
+
+    def suite(self, suite: TestSuite) -> None:
+        if suite.source and suite.resource:
+            self.load(suite.resource, Path(suite.source))
+        self.walk([suite.setup])
+        for test in suite.tests:
+            self.walk([test.setup, *test.body, test.teardown])
+        self.walk([suite.teardown])
+        for child in suite.suites:
+            _Reader(self.plan).suite(child)
 
 
 def read_suite(path: str) -> SuitePlan:
     plan = SuitePlan()
-    run(path, dryrun=True, listener=_Collector(plan), output="NONE", log="NONE",
-              report="NONE", stdout=io.StringIO(), stderr=io.StringIO())
+    _Reader(plan).suite(TestSuiteBuilder().build(path))
     return plan

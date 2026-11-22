@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWi
 from .panels import fill_stats, stats_table
 
 
-class ReportTab(QWidget):  # type: ignore[misc]
+class ReportTab(QWidget):  # type: ignore[misc, unused-ignore]
     def __init__(self) -> None:
         super().__init__()
         self._log = Path()

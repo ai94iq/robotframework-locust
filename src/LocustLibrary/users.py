@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import urlsplit
 
 import gevent.local
 from locust import HttpUser, between, constant_pacing
@@ -108,12 +109,44 @@ def _keyword_method(keyword_name: str) -> Callable[[Any], None]:
     return method
 
 
+def _bypassed(url: str, rules: list[str]) -> bool:
+    """no_proxy as curl reads it: a name matches itself and its subdomains; name:port only that port."""
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    for rule in rules:
+        name, sep, wanted = rule.rpartition(":")
+        if not (sep and wanted.isdigit()):
+            name, wanted = rule, ""
+        name = name.lstrip(".")
+        if (host == name or host.endswith("." + name)) and (not wanted or int(wanted) == port):
+            return True
+    return False
+
+
+def _bypass_suffixes(client: Any, no_proxy: str) -> None:
+    """Send no_proxy hosts direct, with .suffix and host:port forms the proxies dict cannot hold."""
+    rules = [h.strip().lower() for h in no_proxy.split(",") if h.strip()]
+    if not rules:
+        return
+    merge = client.merge_environment_settings
+
+    def direct(url: str, *args: Any) -> Any:
+        settings = merge(url, *args)
+        if _bypassed(url, rules):
+            settings["proxies"] = {}
+        return settings
+
+    client.merge_environment_settings = direct
+
+
 class _RFHttpUser(HttpUser):
     """HttpUser whose TLS check and proxy come from the scenario."""
 
     abstract = True
     verify_tls = True
     proxy = ""
+    no_proxy = ""
     budget: Budget | None = None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -123,7 +156,12 @@ class _RFHttpUser(HttpUser):
         self.client.verify = self.verify_tls
         if self.proxy:
             # Locust turns off trust_env, so HTTPS_PROXY is never read on its own.
-            self.client.proxies = {"http": self.proxy, "https": self.proxy}
+            proxies: dict[str, str | None] = {"http": self.proxy, "https": self.proxy}
+            for host in filter(None, (h.strip().lower() for h in self.no_proxy.split(","))):
+                # A scheme://host key beats the scheme key; None sends that host direct.
+                proxies[f"http://{host}"] = proxies[f"https://{host}"] = None
+            self.client.proxies = proxies  # type: ignore[assignment]
+            _bypass_suffixes(self.client, self.no_proxy)
 
 
 def _user_class(scenario: Scenario, tasks: list[Any], budget: Budget | None = None) -> type:
@@ -135,6 +173,7 @@ def _user_class(scenario: Scenario, tasks: list[Any], budget: Budget | None = No
         "fixed_count": scenario.fixed_count,
         "verify_tls": scenario.verify_tls,
         "proxy": scenario.proxy,
+        "no_proxy": scenario.no_proxy,
         "abstract": False,
         "wait_time": (constant_pacing(scenario.pacing) if scenario.pacing
                       else between(scenario.wait_min, scenario.wait_max)),

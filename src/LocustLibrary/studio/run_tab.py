@@ -26,7 +26,7 @@ from .panels import Charts, fill_stats, stats_table
 from .worker import RunWorker
 
 
-class RunTab(QWidget):  # type: ignore[misc]
+class RunTab(QWidget):  # type: ignore[misc, unused-ignore]
     console = Signal(str)
     final = Signal(object)
     outputs = Signal(object, object)

@@ -1,10 +1,30 @@
 """Keywords that build the load test: classes, stages, waits and tasks."""
 
+import os
+from pathlib import Path
+
 from robot.api import logger
 from robot.api.deco import keyword
 
 from .parsing import _keyword_name, _parse_seconds, _python_function, _stage, _statuses
 from .scenario import RunConfig, Scenario, Stats, Task
+
+
+def _env(*names: str) -> str:
+    return next((os.environ[n] for n in names if os.environ.get(n)), "")
+
+
+def _resolve_proxy(proxy: str, no_proxy: str) -> tuple[str, str]:
+    """Locust sets trust_env off, so the proxy env vars are read here."""
+    if proxy.strip().lower() == "none":
+        return "", ""
+    if proxy:
+        return proxy, no_proxy
+    proxy = _env("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy")
+    if not proxy:
+        return "", no_proxy
+    hosts = [h.strip() for h in f"{no_proxy},{_env('NO_PROXY', 'no_proxy')}".split(",")]
+    return proxy, ",".join(h for h in hosts if h)
 
 
 class BuildKeywords:
@@ -17,12 +37,15 @@ class BuildKeywords:
     _stats: Stats | None
 
     @keyword
-    def create_load_test(self, host: str, verify_tls: bool = True, proxy: str = "",
-                         allowed_hosts: str = "") -> None:
+    def create_load_test(self, host: str, verify_tls: bool | str = True, proxy: str = "",
+                         allowed_hosts: str = "", no_proxy: str = "") -> None:
         """Create a new load test scenario.
 
-        `verify_tls=False` matches k6 insecureSkipTLSVerify. `proxy` is an http:// proxy URL;
-        Locust ignores HTTPS_PROXY, so pass it here.
+        `verify_tls=False` matches k6 insecureSkipTLSVerify; a file path uses that CA bundle
+        and a missing file is refused. `proxy` is an http:// proxy URL; when it is empty
+        HTTPS_PROXY or HTTP_PROXY (either case) is used, and `proxy=none` turns that off.
+        `no_proxy` is a comma list of host names that skip the proxy; NO_PROXY is added
+        when the proxy came from the environment.
         `allowed_hosts` is a comma list of host names the test may hit; when it is empty the
         LOCUSTLIBRARY_ALLOWED_HOSTS environment variable is used. A host outside the list is
         refused. With no list at all the host is accepted and one warning is logged.
@@ -30,11 +53,15 @@ class BuildKeywords:
         from .validation import allowed_hosts as read_allowed
         from .validation import validate_host
 
+        if isinstance(verify_tls, str) and not Path(verify_tls).is_file():
+            raise ValueError(f"verify_tls CA bundle not found: {verify_tls}")
         allowed = read_allowed(allowed_hosts)
         host = validate_host(host, allowed)
         if not allowed:
             logger.warn(f"No allowed hosts set; {host} is not checked against a list")
-        self._scenario = Scenario(host=host, verify_tls=verify_tls, proxy=proxy)
+        proxy, no_proxy = _resolve_proxy(proxy, no_proxy)
+        self._scenario = Scenario(host=host, verify_tls=verify_tls, proxy=proxy,
+                                  no_proxy=no_proxy)
         self._scenarios = [self._scenario]
         self._default = self._scenario
         self._config = RunConfig()
@@ -52,7 +79,7 @@ class BuildKeywords:
         current = self._scenario
         self._scenario = Scenario(host=current.host, name=name, weight=weight,
                                   fixed_count=fixed_count, verify_tls=current.verify_tls,
-                                  proxy=current.proxy)
+                                  proxy=current.proxy, no_proxy=current.no_proxy)
         # The class Create Load Test made has no tasks yet; Locust refuses a class without tasks.
         if current is self._default and len(self._scenarios) == 1 and not current.tasks:
             self._scenarios = []

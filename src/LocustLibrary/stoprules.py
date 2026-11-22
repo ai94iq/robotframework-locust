@@ -49,7 +49,7 @@ class RuleWatch:
     """Checks every rule on each tick; the first rule that held for its window names the stop."""
 
     def __init__(self, rules: list[StopRule], local: Any) -> None:
-        self.rules, self.local, self.failed = rules, local, False
+        self.rules, self.local, self.failed, self.machine = rules, local, False, False
         self._since: dict[int, float] = {}
         self._codes: list[int] = []
         self._seen = {"codes": 0, "requests": 0, "failures": 0}
@@ -77,6 +77,7 @@ class RuleWatch:
             start = self._since.setdefault(index, elapsed)
             if elapsed - start >= rule.window:
                 self.failed = rule.fail_run
+                self.machine = rule.metric in ("cpu", "mem")
                 return f"stopped after {elapsed:.0f} s: {rule.text}"
         return ""
 

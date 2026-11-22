@@ -1,5 +1,7 @@
 """TLS, proxy and per-endpoint error rate, for k6 scripts that set them."""
 
+from typing import Any
+
 import pytest
 from locust.env import Environment
 
@@ -27,6 +29,23 @@ def test_keyword_carries_tls_and_proxy_to_every_class() -> None:
     lib.add_user_class("token")
     lib.add_user_class("signup")
     assert [(s.verify_tls, s.proxy) for s in lib._scenarios] == [(False, "http://127.0.0.1:1")] * 2
+
+
+def test_verify_tls_takes_a_ca_bundle_path(tmp_path: Any) -> None:
+    bundle = tmp_path / "ca.pem"
+    bundle.write_text("cert")
+    lib = LocustLibrary()
+    lib.create_load_test("https://h", verify_tls=str(bundle), allowed_hosts="h")
+    lib.add_user_class("token")
+    assert [s.verify_tls for s in lib._scenarios] == [str(bundle)]
+    user = users._user_class(lib._scenarios[0], [])(Environment())
+    assert user.client.verify == str(bundle)
+
+
+def test_verify_tls_refuses_a_missing_ca_bundle(tmp_path: Any) -> None:
+    lib = LocustLibrary()
+    with pytest.raises(ValueError, match="CA bundle"):
+        lib.create_load_test("https://h", verify_tls=str(tmp_path / "nope.pem"), allowed_hosts="h")
 
 
 def _lib_with(rows: list[StatsRow]) -> LocustLibrary:

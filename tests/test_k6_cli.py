@@ -51,7 +51,7 @@ def test_env_file_is_kept_and_entry_lists_every_collection(monkeypatch, tmp_path
     assert "../collections/token_test_keywords.resource" in entry
     assert "LocustLibrary    python_path=${CURDIR}/python" in entry
     assert "_tasks.py" not in entry
-    assert (out / "resources/dev_variables.resource").read_text(encoding="utf-8") == "hand edited"
+    assert (out / "resources/dev_variables.resource").read_text(encoding="utf-8") == "hand edited\n${ALLOW_STUBS}      ${False}\n"
 
 
 def test_tasks_file_is_kept_unless_forced(monkeypatch, tmp_path: Path) -> None:
@@ -72,6 +72,55 @@ def test_tasks_file_is_kept_unless_forced(monkeypatch, tmp_path: Path) -> None:
     assert "| tasks file | kept |" not in report.read_text(encoding="utf-8")
 
 
+def test_force_backs_up_the_tasks_file(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(cli, "run_inspect", _inspect({}))
+    script = tmp_path / "smoke.js"
+    script.write_text(SCRIPT, encoding="utf-8")
+    out = tmp_path / "robot"
+    tasks = out / "resources/python/smoke_tasks.py"
+    backup = out / "resources/python/smoke_tasks.py.bak"
+    tasks.parent.mkdir(parents=True)
+    backup.write_text("older backup", encoding="utf-8")
+    tasks.write_text("hand ported", encoding="utf-8")
+    cli.main([str(script), "--trust-script", "--out", str(out), "--force"])
+    assert backup.read_text(encoding="utf-8") == "older backup"
+    assert (out / "resources/python/smoke_tasks.py.bak.1").read_text(encoding="utf-8") == "hand ported"
+    report = (out / "reports/smoke.k6-report.md").read_text(encoding="utf-8")
+    assert "| tasks file | backed up | old resources/python/smoke_tasks.py copied to " \
+        "resources/python/smoke_tasks.py.bak.1 before the rewrite |" in report
+
+
+def test_a_second_force_keeps_the_first_backup(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(cli, "run_inspect", _inspect({}))
+    script = tmp_path / "smoke.js"
+    script.write_text(SCRIPT, encoding="utf-8")
+    out = tmp_path / "robot"
+    tasks = out / "resources/python/smoke_tasks.py"
+    tasks.parent.mkdir(parents=True)
+    tasks.write_text("hand ported", encoding="utf-8")
+    cli.main([str(script), "--trust-script", "--out", str(out), "--force"])
+    cli.main([str(script), "--trust-script", "--out", str(out), "--force"])
+    assert (out / "resources/python/smoke_tasks.py.bak").read_text(encoding="utf-8") == "hand ported"
+    assert not (out / "resources/python/smoke_tasks.py.bak.1").exists()
+
+
+def test_a_missing_script_is_reported_as_missing(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit, match="no such file"):
+        cli.main([str(tmp_path / "gone.js")])
+
+
+def test_allow_stubs_with_no_value_is_not_added_again(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(cli, "run_inspect", _inspect({}))
+    script = tmp_path / "smoke.js"
+    script.write_text(SCRIPT, encoding="utf-8")
+    out = tmp_path / "robot"
+    env = out / "resources/dev_variables.resource"
+    env.parent.mkdir(parents=True)
+    env.write_text("${ALLOW_STUBS}\n", encoding="utf-8")
+    cli.main([str(script), "--trust-script", "--out", str(out)])
+    assert env.read_text(encoding="utf-8") == "${ALLOW_STUBS}\n"
+
+
 def test_bad_env_pair_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         cli.main([str(tmp_path / "a.js"), "-e", "NOEQUALS"])
@@ -88,6 +137,7 @@ def test_unsafe_env_name_is_rejected(monkeypatch, tmp_path: Path, name: str) -> 
 def test_inspect_needs_trust_script(monkeypatch, tmp_path: Path) -> None:
     called: dict[str, Any] = {}
     monkeypatch.setattr(cli, "run_inspect", _inspect(called))
+    (tmp_path / "a.js").write_text("export default function () {}", encoding="utf-8")
     with pytest.raises(SystemExit) as stop:
         cli.main([str(tmp_path / "a.js"), "--out", str(tmp_path / "out")])
     err = str(stop.value.code)
@@ -130,7 +180,7 @@ def test_host_flag_on_env_file_without_host_lines_is_reported(monkeypatch, tmp_p
     env.parent.mkdir(parents=True)
     env.write_text("hand edited", encoding="utf-8")
     assert cli.main([str(script), "--trust-script", "--out", str(out), "--host", "http://staging:81"]) == 0
-    assert env.read_text(encoding="utf-8") == "hand edited"
+    assert env.read_text(encoding="utf-8") == "hand edited\n${ALLOW_STUBS}      ${False}\n"
     report = (out / "reports/smoke.k6-report.md").read_text(encoding="utf-8")
     assert "| host | not applied | resources/dev_variables.resource has no ${HOST} or ${ALLOWED_HOSTS} line; set them there by hand |" in report
 
@@ -138,3 +188,25 @@ def test_host_flag_on_env_file_without_host_lines_is_reported(monkeypatch, tmp_p
 def test_bad_host_flag_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         cli.main([str(tmp_path / "x.js"), "--trust-script", "--host", "ftp://x"])
+
+
+def test_a_shortcut_conflict_gets_its_own_error_not_an_inspect_hint(tmp_path: Path) -> None:
+    script = tmp_path / "clash.js"
+    script.write_text("export const options = { iterations: 5, stages: [{ duration: '1s', target: 1 }] };\n" + SCRIPT,
+                      encoding="utf-8")
+    with pytest.raises(SystemExit) as caught:
+        cli.main([str(script), "--out", str(tmp_path / "robot")])
+    message = str(caught.value)
+    assert "`iterations` and `stages`" in message
+    assert "inspect" not in message and "--trust-script" not in message
+
+
+@pytest.mark.parametrize("bare", ["${HOST}", "${ALLOWED_HOSTS}"])
+def test_a_host_line_with_no_value_is_still_rewritten(tmp_path: Path, bare: str) -> None:
+    env = tmp_path / "dev_variables.resource"
+    env.write_text(f"hand edited\n{bare}\n", encoding="utf-8")
+    assert cli._set_host(env, "https://new.example") is True
+    lines = env.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == "hand edited"
+    assert lines[1].startswith(bare) and lines[1] != bare
+    assert "new.example" in lines[1]

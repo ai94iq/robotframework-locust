@@ -26,11 +26,21 @@ def test_stage_peak_over_ceiling_is_refused(lib: LocustLibrary) -> None:
         lib.run_load_test()
 
 
-def test_fixed_counts_add_up(lib: LocustLibrary) -> None:
+def test_fixed_counts_over_users_warn_not_refuse(lib: LocustLibrary, monkeypatch) -> None:
+    warnings: list[str] = []
+    monkeypatch.setattr(lib_module.logger, "warn", warnings.append)
     lib.add_user_class("a", fixed_count=60)
     lib.add_user_class("b", fixed_count=50)
-    with pytest.raises(ValueError, match="110 users"):
-        lib.run_load_test(users=10)
+    lib.run_load_test(users=10)
+    assert any("only 10 users run" in w and "fixed classes take them first" in w for w in warnings)
+
+
+def test_fixed_counts_within_users_do_not_warn(lib: LocustLibrary, monkeypatch) -> None:
+    warnings: list[str] = []
+    monkeypatch.setattr(lib_module.logger, "warn", warnings.append)
+    lib.add_user_class("a", fixed_count=5)
+    lib.run_load_test(users=10)
+    assert not [w for w in warnings if "fixed classes" in w]
 
 
 def test_raised_ceiling_allows_the_run(lib: LocustLibrary) -> None:

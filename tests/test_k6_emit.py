@@ -12,7 +12,7 @@ import pytest
 import robot
 from locust.exception import StopUser
 
-from LocustLibrary.k6 import emit, options, profile
+from LocustLibrary.k6 import emit, options, profile, robot_files, stubs
 from LocustLibrary.k6.scan import ExecFunction, HttpCall, scan_source
 from LocustLibrary.scenario import Stage
 
@@ -79,6 +79,30 @@ def test_flows_are_stubs_listed_in_the_report(combined: emit.Conversion) -> None
     assert "combined.js line 40" in str(fired[0]["exception"])
     report = combined.files["reports/combined.k6-report.md"]
     assert "| scenario signup | hand port | line 41: signupFlow()" in report
+
+
+def test_run_refuses_to_start_while_stubs_remain(combined: emit.Conversion, monkeypatch) -> None:
+    tasks = _tasks(combined, "combined")
+    monkeypatch.setitem(sys.modules, "combined_tasks", tasks)
+    assert tasks.signupScenario.__hand_port__ is True
+    assert not hasattr(tasks, "check_hand_ports")
+    with pytest.raises(AssertionError, match="otpScenario, signupScenario, tokenScenario"):
+        stubs.check_hand_ports("combined_tasks", False)
+    stubs.check_hand_ports("combined_tasks", True)
+    run = _keywords(combined, "combined").split("\nRun Combined Load\n")[1].splitlines()
+    assert run[1] == "    ${allow}=    Get Variable Value    ${ALLOW_STUBS}    ${False}"
+    assert run[2] == ("    Evaluate    __import__('LocustLibrary.k6.stubs', fromlist=['_'])"
+                      ".check_hand_ports('combined_tasks', $allow)")
+    assert "${ALLOW_STUBS}      ${False}\n" in emit.env_variables("dev", "http://h")
+
+
+def test_ported_tasks_pass_the_stub_check(monkeypatch) -> None:
+    plain = ExecFunction("a", 1, calls=[HttpCall("GET", "http://h/x")])
+    module = types.ModuleType("plain_tasks")
+    source = robot_files.tasks_module("plain.js", [("a", plain)])
+    exec(compile(source, "plain_tasks.py", "exec"), module.__dict__)  # noqa: S102
+    monkeypatch.setitem(sys.modules, "plain_tasks", module)
+    stubs.check_hand_ports("plain_tasks", False)
 
 
 def _project(tmp_path: Path, done: emit.Conversion) -> Path:

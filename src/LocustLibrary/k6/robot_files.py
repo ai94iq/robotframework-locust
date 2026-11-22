@@ -65,10 +65,17 @@ def keywords(script: str, insecure: bool, steps: Steps) -> str:
         *_keyword(f"Build {title} Users", "One user class per k6 scenario, weighted by its peak users.",
                   [create, *steps.classes]),
         *_keyword(f"Run {title} Load", "Runs the converted k6 load profile headless.",
-                  [*stops, *(_fail_ratio(line) for line in steps.load)]),
+                  [*_stub_check(script), *stops, *(_fail_ratio(line) for line in steps.load)]),
         *_keyword(f"Check {title} Load", "The converted k6 thresholds.", steps.checks),
     ]
     return "\n".join([*head, *body]).rstrip() + "\n"
+
+
+def _stub_check(script: str) -> list[str]:
+    module = f"{PurePath(script).stem}_tasks"
+    return [f"${{allow}}={SEP}Get Variable Value{SEP}${{ALLOW_STUBS}}{SEP}${{False}}",
+            (f"Evaluate{SEP}__import__('LocustLibrary.k6.stubs', fromlist=['_'])"
+             f".check_hand_ports({module!r}, $allow)")]
 
 
 def _fail_ratio(line: str) -> str:
@@ -106,6 +113,7 @@ def env_variables(env: str, host: str) -> str:
         f"${{HOST}}             {escape(host)}",
         f"${{ALLOWED_HOSTS}}      {escape(urlsplit(host).hostname or '')}",
         "${PROXY}            ${EMPTY}",
+        "${ALLOW_STUBS}      ${False}",
     ]) + "\n"
 
 
@@ -114,6 +122,8 @@ def tasks_module(script: str, wanted: list[tuple[str, ExecFunction | None]]) -> 
              "", "from typing import Any"]
     for name, fn in wanted:
         parts += ["", "", f"def {name}(user: Any) -> None:", *_function_body(script, name, fn)]
+        if fn is None or not fn.simple:
+            parts.append(f"{name}.__hand_port__ = True  # type: ignore[attr-defined]")
     return "\n".join(parts) + "\n"
 
 

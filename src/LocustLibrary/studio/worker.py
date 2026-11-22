@@ -9,7 +9,7 @@ from PySide6.QtCore import QThread, Signal
 from LocustLibrary import feed
 
 
-class RunWorker(QThread):  # type: ignore[misc]
+class RunWorker(QThread):  # type: ignore[misc, unused-ignore]
     """Runs tasks built on the Build tab in process; the feed file carries the live charts."""
 
     finished = Signal(object)

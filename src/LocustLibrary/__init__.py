@@ -7,7 +7,7 @@ from robot.api import logger
 from robot.api.deco import keyword
 
 from .builder import BuildKeywords
-from .calllog import MAX_FAILED, PER_NAME
+from .calllog import MAX_FAILED, PER_NAME, masked_names
 from .checks import CheckKeywords
 from .parsing import _parse_seconds, _ratio
 from .runner import run_load_test
@@ -36,11 +36,13 @@ class LocustLibrary(BuildKeywords, CheckKeywords, SharedKeywords):
 
     ROBOT_LIBRARY_SCOPE = "SUITE"
 
-    def __init__(self, python_path: str = "", shared_limit: int = 10000) -> None:
+    def __init__(self, python_path: str = "", shared_limit: int = 10000, mask: str = "") -> None:
         """`python_path` is a folder searched for the modules Add Python Task names.
 
         `shared_limit` caps the values one Put Shared Value name holds; 0 is no limit.
+        `mask` is a comma list of extra header or body field names to mask in the request log.
         """
+        self._mask = masked_names(mask)
         if python_path and python_path not in sys.path:
             sys.path.insert(0, python_path)
         self._scenario: Scenario | None = None
@@ -80,6 +82,7 @@ class LocustLibrary(BuildKeywords, CheckKeywords, SharedKeywords):
         self._config.stop_on_fail_ratio = _ratio(stop_on_fail_ratio)
         self._config.fail_ratio_warmup = _parse_seconds(fail_ratio_warmup)
         self._config.breaker_fails = breaker_fails
+        self._config.mask = self._mask
         self._check_ceiling(self._config, max_users)
         self._shared.clear()
         for host in dict.fromkeys(s.host for s in self._scenarios if not s.verify_tls):
@@ -90,6 +93,9 @@ class LocustLibrary(BuildKeywords, CheckKeywords, SharedKeywords):
         if self._stats.cpu_busy:
             logger.warn("Load generator CPU went over 90%; response times may be too high")
         self._log_run(self._stats)
+        if self._stats.stop_failed and self._stats.stop_machine:
+            raise AssertionError(f"Inconclusive: the load machine ran out of room, so the target was not judged; "
+                                 f"load test {self._stats.stopped}")
         if self._stats.stop_failed:
             raise AssertionError(f"Load test {self._stats.stopped}")
         if fail_on_busy_cpu and self._stats.cpu_busy:
@@ -124,7 +130,10 @@ class LocustLibrary(BuildKeywords, CheckKeywords, SharedKeywords):
 
     def _check_ceiling(self, config: RunConfig, max_users: int) -> None:
         peak = max((s.users for s in config.stages), default=config.users)
-        peak = max(peak, sum(s.fixed_count for s in self._scenarios))
+        fixed = sum(s.fixed_count for s in self._scenarios)
+        if fixed > peak:
+            logger.warn(f"Fixed counts add up to {fixed}, but only {peak} users run; "
+                        "fixed classes take them first")
         if peak > max_users:
             raise ValueError(f"{peak} users is over max_users={max_users}; raise it on purpose")
 

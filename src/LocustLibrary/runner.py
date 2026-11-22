@@ -75,7 +75,7 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
     shape = StageShape(config.stages) if config.stages else None
     env = Environment(user_classes=[build_class(s, budget) for s in scenarios],
                       shape_class=shape)
-    calls = _observe(env)
+    calls = _observe(env, config.mask)
     runner = env.create_local_runner()
     history = _start_history(runner)
     # One warning per call drowns the log; the library logs one line per host instead.
@@ -102,9 +102,15 @@ def run_load_test(scenarios: list[Scenario], config: RunConfig) -> Stats:
         runner.greenlet.join(timeout=10)
     history.kill(block=False)
     stats = _finish(env, calls)
-    broke = bool(stopped) and stopped == tripped[-1]
-    stats.stopped, stats.stop_failed = stopped, watch.failed or (broke and config.breaker_fails)
+    stats.stopped, stats.stop_failed, stats.stop_machine = _stop_outcome(
+        stopped, tripped, watch, config.breaker_fails)
     return stats
+
+
+def _stop_outcome(stopped: str, tripped: list[str], watch: Any, breaker_fails: bool) -> tuple[str, bool, bool]:
+    """Stop text, failed, load-machine stop; a fail-ratio breaker stop is never a load-machine stop."""
+    broke = bool(stopped) and stopped == tripped[-1]
+    return stopped, watch.failed or (broke and breaker_fails), watch.machine and not broke
 
 
 def _first_reason(*checks: Callable[[float], str]) -> Callable[[float], str]:
@@ -121,8 +127,8 @@ def _start_history(local: Any) -> Any:
     return group
 
 
-def _observe(env: Any) -> CallLog:
-    calls = CallLog()
+def _observe(env: Any, masked: frozenset[str] = frozenset()) -> CallLog:
+    calls = CallLog(masked=masked)
     env.events.request.add_listener(calls.record)
     return calls
 

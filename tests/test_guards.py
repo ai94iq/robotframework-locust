@@ -78,7 +78,7 @@ def _breaker_run(monkeypatch: pytest.MonkeyPatch, config: Any) -> Stats:
     from tests.test_shape import _fake_env
 
     monkeypatch.setattr(runner, "_patch_gevent", lambda: None)
-    monkeypatch.setattr(runner, "_observe", lambda _env: None)
+    monkeypatch.setattr(runner, "_observe", lambda _env, _mask: None)
     monkeypatch.setattr(runner, "_start_history", lambda _r: SimpleNamespace(kill=lambda **_k: None))
     monkeypatch.setattr(runner, "_finish", lambda _env, _calls: Stats())
     monkeypatch.setattr(runner, "Environment", _fake_env([]))
@@ -195,3 +195,23 @@ def test_keyword_passes_the_expected_text() -> None:
     lib.add_get_request("health", "/health", expected_text="UP")
     lib.add_post_request("save", "/x", expected_text="id")
     assert [t.expected_text for t in lib._scenario.tasks] == ["UP", "id"]
+
+
+_BUSY = "Load generator CPU went over 90%; these numbers may be skewed by an overloaded load machine"
+
+
+@pytest.mark.parametrize("busy", [True, False])
+def test_should_keywords_warn_after_a_busy_run(monkeypatch: pytest.MonkeyPatch, busy: bool) -> None:
+    from LocustLibrary import checks
+
+    warned: list[str] = []
+    monkeypatch.setattr(checks.logger, "warn", warned.append)
+    lib = _lib([StatsRow("home", request_count=5, p95=10, rps=5.0)])
+    assert lib._stats is not None
+    lib._stats.aggregated = StatsRow("Aggregated", request_count=5, rps=5.0)
+    lib._stats.cpu_busy = busy
+    lib.should_have_no_failures()
+    lib.should_meet_response_time("home", "p95", "1000ms")
+    lib.should_meet_throughput("1")
+    lib.should_meet_error_rate("1%")
+    assert warned == ([_BUSY] * 4 if busy else [])
