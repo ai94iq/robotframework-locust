@@ -46,7 +46,7 @@ stem here. Paths are relative to the project folder:
 
 | File | Content |
 |---|---|
-| `tests/<stem>.robot` | Thin suite: one test, `<Title> Load - <Condition> - Thresholds Met`, that calls `Test <Title> Load` |
+| `tests/<stem>.robot` | Thin suite: one test, `<Title> Load - <Condition> - Mapped Thresholds Met`, that calls `Test <Title> Load` |
 | `collections/<stem>_test_keywords.resource` | Build, Run and Check keywords. Threshold endpoints sit in `@{<STEM>_CHECK_<n>_ENDPOINTS}` lists, looped with FOR |
 | `resources/resources.resource` | Entry file every suite imports. Rebuilt on each run: LocustLibrary with `python_path` set to `resources/python`, then every collection |
 | `resources/variables.resource` | `${ENV}`, default `dev`. Written only when missing |
@@ -135,18 +135,20 @@ A function is plain when it holds only simple HTTP calls (`http.get`,
 `Number(__ENV.X || n)` from a top-level `const` uses its default `n`; a
 `-e X=...` value does not change it.
 
-A call to a local function with no arguments, such as `tokenFlow()`, does not
+A call to a local function with no arguments, such as `warmUp()`, does not
 stop the scan. The HTTP calls around it still convert. The helper itself is not
-converted: the report gets a row `helper tokenFlow | hand port | combined.js
-line 57: tokenFlow() is not converted`. Port the helper's calls by hand.
+converted: the report gets a row `helper warmUp | hand port | combined.js
+line 45: warmUp() is not converted`. Port the helper's calls by hand.
 
 Any other statement makes the function a hand port, including a call to a local
-function with arguments, such as `tokenFlow(user)`. The report gives the first
-line that stopped the scan. The generated stub looks like this:
+function with arguments, such as `tokenFlow('sample')`. The report gives the
+first line that stopped the scan. The report and stub drop the argument and
+show the call as `tokenFlow()`. The generated stub for
+[samples/k6/combined.js](../samples/k6/combined.js) looks like this:
 
 ```python
 def tokenScenario(user: Any) -> None:
-    'Hand port from combined.js line 56: line 57: tokenFlow(user) is not an HTTP call, check or sleep.'
+    'Hand port from combined.js line 56: line 57: tokenFlow() is not an HTTP call, check or sleep.'
     raise NotImplementedError('hand port: combined.js line 56')
 ```
 
@@ -204,34 +206,30 @@ that name, so a different name leaves the check with no row to read.
 
 ## Example run
 
-A run on a three-scenario sample, `combined.js`, produced this report. Each
-scenario calls a local helper with no arguments. The helper rows below follow
-from the code as it is now (scenario and helper rows edited by hand, not from a
-new run):
-
-The Note column names the endpoint of each threshold row.
+[samples/k6/combined.js](../samples/k6/combined.js) has three scenarios
+(ramping-vus, constant-vus and shared-iterations), endpoint tags, four
+thresholds (one strict `<`, one unsupported `avg`), a helper called with no
+arguments and a helper called with an argument. Every URL is on
+`http://127.0.0.1:8765`. `rflocust-k6 samples/k6/combined.js --out <folder>`
+wrote this report:
 
 | Item | Status | Note |
 |---|---|---|
-| scenario otp | mapped | 0 HTTP calls |
-| helper otpFlow | hand port | combined.js line 52: otpFlow() is not converted |
-| scenario signup | mapped | 0 HTTP calls |
-| helper signupFlow | hand port | combined.js line 47: signupFlow() is not converted |
-| scenario token | mapped | 0 HTTP calls |
-| helper tokenFlow | hand port | combined.js line 57: tokenFlow() is not converted |
-| threshold http_req_duration p95 | mapped | endpoint register |
-| threshold http_req_duration p95 | mapped | endpoint token |
-| threshold http_req_duration p95 | mapped | endpoint verify-phone |
-| threshold http_req_failed rate | mapped | endpoint register |
-| threshold http_req_failed rate | mapped | endpoint token |
-| threshold http_req_failed rate | mapped | endpoint verify-phone |
-| host | set by hand | no absolute URL found; HOST defaults to http://127.0.0.1 |
+| executors | approximate | constant-vus, ramping-vus, shared-iterations run as 17 looping users; Locust has no arrival rate |
+| threshold http_req_duration p95 | mapped | login |
+| threshold http_req_duration p95 | mapped | register |
+| threshold http_req_duration avg | unsupported | no LocustLibrary check for this metric |
+| threshold http_req_failed rate | mapped | login |
+| scenario login | mapped | 1 HTTP calls |
+| scenario signup | mapped | 1 HTTP calls |
+| helper warmUp | hand port | combined.js line 45: warmUp() is not converted |
+| scenario token | hand port | line 57: tokenFlow() is not an HTTP call, check or sleep |
 
 The suite is thin. Its one test calls the collection keyword:
 
 ```
 *** Test Cases ***
-Combined Load - Ramp To 20 Users - Thresholds Met
+Combined Load - 17 Users For 90s - Mapped Thresholds Met
     [Documentation]    Runs the combined.js profile and passes when every converted check holds.
     Test Combined Load
 ```
@@ -240,11 +238,11 @@ The collection holds the Build, Run and Check keywords. Its Run keyword:
 
 ```
 Run Combined Load
-    Set Load Stages    120s:20    600s:20    60s:0
-    Run Load Test    max_users=100
+    [Documentation]    Runs the converted k6 load profile headless.
+    Run Load Test    users=17    spawn_rate=17    run_time=90s    max_users=100
     Export Report    combined
 ```
 
-Port the three stubs in `robot/resources/python/combined_tasks.py`. Then, from
-the folder that holds `robot` (where you ran the converter), run
-`robot -v ENV:dev robot/tests`.
+Port the `tokenScenario` stub and the `warmUp` helper calls in
+`resources/python/combined_tasks.py`. Then, from the output folder, run
+`robot -v ENV:dev tests`.
